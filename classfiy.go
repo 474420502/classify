@@ -11,8 +11,8 @@ import (
 	"github.com/474420502/focus/tree/vbtkey"
 )
 
-// KingTime 时间
-var KingTime = reflect.TypeOf(time.Time{}).Kind()
+// kingTime 时间
+var kingTime = reflect.TypeOf(time.Time{}).Kind()
 
 var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{} {
 	return 0
@@ -361,7 +361,7 @@ func autoComapre(k1, k2 interface{}) int {
 		v1 := rv1.String()
 		v2 := rv2.String()
 		return strings.Compare(v1, v2)
-	case KingTime:
+	case kingTime:
 		v1 := rv1.Interface().(time.Time).UnixNano()
 		v2 := rv2.Interface().(time.Time).UnixNano()
 		switch {

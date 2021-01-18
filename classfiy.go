@@ -35,7 +35,7 @@ type CData struct {
 	Values    *vbtkey.Tree
 }
 
-// CPath 类别路径
+// CPath 类别路径(模型路径)
 type CPath struct {
 	Name     string
 	Handler  CategoryHandler
@@ -49,7 +49,7 @@ func New() *Classify {
 	return c
 }
 
-// Categorys 返回所有数据的类别
+// Categorys 返回所有数据模型的类别. 模型是指 AddCategory的name. Keys是返回分类存在的Keys
 func (c *Classify) Categorys() (result map[string]interface{}) {
 	result = make(map[string]interface{})
 	var categorys func(Category map[string]*CPath, root map[string]interface{})
@@ -251,7 +251,7 @@ func put(Category map[string]*CPath, Data *CData, v interface{}) {
 	}
 }
 
-// AddCategory 设置类别的处理句柄. 返回分类的key
+// AddCategory 设置模型类别的处理句柄. 返回分类的key.
 func (c *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
 
 	if c.CategoryPath == nil {
@@ -271,7 +271,7 @@ func (c *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
 	return next
 }
 
-// Collect 设置类别的处理句柄. 区别于CollectCategory 没handler处理排序的返回key
+// Collect 设置类别的处理句柄. 区别于CollectCategory 没handler排序处理的返回key
 func (c *Classify) Collect() {
 
 	if c.CategoryPath == nil {

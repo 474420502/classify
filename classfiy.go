@@ -99,13 +99,14 @@ func (c *Classify) Keys(paths ...interface{}) []interface{} {
 }
 
 // Put 把数据压进分类器
-func (c *Classify) Put(v interface{}) {
+func (c *Classify) Put(values ...interface{}) {
 	if c.CategoryData == nil { //主要为了NewClassify 不添加其他属性. 使用nil指针
 		c.CategoryData = &CData{}
 	}
 
-	put(c.CategoryPath, c.CategoryData, v)
-
+	for v := range values {
+		put(c.CategoryPath, c.CategoryData, v)
+	}
 }
 
 // Get 获取路径的数据. 如果paths为nil 没输入则全部

@@ -104,9 +104,14 @@ func (c *Classify) Put(values ...interface{}) {
 		c.CategoryData = &CData{}
 	}
 
-	for v := range values {
-		put(c.CategoryPath, c.CategoryData, v)
+	if len(values) == 1 {
+		put(c.CategoryPath, c.CategoryData, values[0])
+	} else {
+		for _, v := range values {
+			put(c.CategoryPath, c.CategoryData, v)
+		}
 	}
+
 }
 
 // Get 获取路径的数据. 如果paths为nil 没输入则全部

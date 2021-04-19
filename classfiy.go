@@ -14,15 +14,15 @@ import (
 // kingTime 时间
 var kingTime = reflect.TypeOf(time.Time{}).Kind()
 
-var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{} {
+var defaultCategoryHandler CategoryHandlerOld = func(value interface{}) interface{} {
 	return 0
 }
 
-// CategoryHandler 还回识别类别的keys. 返回的是子兄弟的类别.
-type CategoryHandler func(value interface{}) interface{}
+// CategoryHandlerOld 还回识别类别的keys. 返回的是子兄弟的类别.
+type CategoryHandlerOld func(value interface{}) interface{}
 
-// Classify 分类
-type Classify struct {
+// ClassifyOld 分类
+type ClassifyOld struct {
 	// Name     string // 分类器的总名
 	CategoryPath map[string]*CPath
 	CategoryData *CData
@@ -38,19 +38,19 @@ type CData struct {
 // CPath 类别路径(模型路径)
 type CPath struct {
 	Name     string
-	Handler  CategoryHandler
+	Handler  CategoryHandlerOld
 	IsValues bool
 	Children map[string]*CPath
 }
 
 // New 创建新分类器
-func New() *Classify {
-	c := &Classify{}
+func New() *ClassifyOld {
+	c := &ClassifyOld{}
 	return c
 }
 
 // Categorys 返回所有数据模型的类别. 模型是指 AddCategory的name. Keys是返回分类存在的Keys
-func (c *Classify) Categorys() (result map[string]interface{}) {
+func (c *ClassifyOld) Categorys() (result map[string]interface{}) {
 	result = make(map[string]interface{})
 	var categorys func(Category map[string]*CPath, root map[string]interface{})
 	categorys = func(Category map[string]*CPath, root map[string]interface{}) {
@@ -69,7 +69,7 @@ func (c *Classify) Categorys() (result map[string]interface{}) {
 }
 
 // Keys 返回所有数据的类别的key
-func (c *Classify) Keys(paths ...interface{}) []interface{} {
+func (c *ClassifyOld) Keys(paths ...interface{}) []interface{} {
 
 	if c.CategoryData == nil {
 		return nil
@@ -99,7 +99,7 @@ func (c *Classify) Keys(paths ...interface{}) []interface{} {
 }
 
 // Put 把数据压进分类器
-func (c *Classify) Put(v interface{}) {
+func (c *ClassifyOld) Put(v interface{}) {
 	if c.CategoryData == nil { //主要为了NewClassify 不添加其他属性. 使用nil指针
 		c.CategoryData = &CData{}
 	}
@@ -109,7 +109,7 @@ func (c *Classify) Put(v interface{}) {
 }
 
 // Get 获取路径的数据. 如果paths为nil 没输入则全部
-func (c *Classify) Get(out interface{}, paths ...interface{}) {
+func (c *ClassifyOld) Get(out interface{}, paths ...interface{}) {
 
 	if c.CategoryData == nil {
 		return
@@ -171,7 +171,7 @@ func (c *Classify) Get(out interface{}, paths ...interface{}) {
 // }
 
 // DebugKeys 用于debug打印Keys
-func (c *Classify) DebugKeys() {
+func (c *ClassifyOld) DebugKeys() {
 	data, err := json.Marshal(c.Categorys())
 	if err != nil {
 		log.Panic(err)
@@ -179,7 +179,7 @@ func (c *Classify) DebugKeys() {
 	log.Println(data)
 }
 
-func (c *Classify) debugPrint(limit int) {
+func (c *ClassifyOld) debugPrint(limit int) {
 	out("", c.CategoryPath, c.CategoryData, limit)
 }
 
@@ -219,40 +219,39 @@ func out(parentName string, Category map[string]*CPath, Data *CData, limit int) 
 
 func put(Category map[string]*CPath, Data *CData, v interface{}) {
 
-	if Category != nil {
-		for _, p := range Category {
-			key := p.Handler(v)
+	for _, p := range Category {
+		key := p.Handler(v)
 
-			if Data.Values == nil {
-				Data.Values = vbtkey.New(autoComapre)
-			}
-
-			if p.IsValues {
-				if !Data.IsCollect {
-					Data.IsCollect = true
-				}
-				Data.Values.Put(key, v)
-				return
-			}
-
-			// 进入下一个类别
-			var next *CData
-			// var ok bool
-			// log.Println(key, v.(*database.PayItem).CreateAt)
-			if inext, ok := Data.Values.Get(key); ok {
-				next = inext.(*CData)
-			} else {
-				next = &CData{Name: p.Name}
-				Data.Values.Put(key, next)
-			}
-
-			put(p.Children, next, v)
+		if Data.Values == nil {
+			Data.Values = vbtkey.New(autoComapre)
 		}
+
+		if p.IsValues {
+			if !Data.IsCollect {
+				Data.IsCollect = true
+			}
+			Data.Values.Put(key, v)
+			return
+		}
+
+		// 进入下一个类别
+		var next *CData
+		// var ok bool
+		// log.Println(key, v.(*database.PayItem).CreateAt)
+		if inext, ok := Data.Values.Get(key); ok {
+			next = inext.(*CData)
+		} else {
+			next = &CData{Name: p.Name}
+			Data.Values.Put(key, next)
+		}
+
+		put(p.Children, next, v)
 	}
+
 }
 
 // AddCategory 设置模型类别的处理句柄. 返回分类的key.
-func (c *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
+func (c *ClassifyOld) AddCategory(name string, handler CategoryHandlerOld) *ClassifyOld {
 
 	if c.CategoryPath == nil {
 		c.CategoryPath = make(map[string]*CPath)
@@ -272,7 +271,7 @@ func (c *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
 }
 
 // Collect 设置类别的处理句柄. 区别于CollectCategory 没handler排序处理的返回key
-func (c *Classify) Collect() {
+func (c *ClassifyOld) Collect() {
 
 	if c.CategoryPath == nil {
 		c.CategoryPath = make(map[string]*CPath)
@@ -288,7 +287,7 @@ func (c *Classify) Collect() {
 }
 
 // CollectCategory 设置类别的处理句柄. 返回分类CategoryHandler的key. 用于排序
-func (c *Classify) CollectCategory(handler CategoryHandler) {
+func (c *ClassifyOld) CollectCategory(handler CategoryHandlerOld) {
 
 	if c.CategoryPath == nil {
 		c.CategoryPath = make(map[string]*CPath)

@@ -2,6 +2,7 @@ package classify
 
 import (
 	"log"
+	"reflect"
 )
 
 type CollectHandler func(value interface{}) interface{}
@@ -21,8 +22,8 @@ const (
 
 type Classify struct {
 	Handlers   map[string]CollectHandler
-	root       *category     // 类别
-	collection []*collection // 数据集合
+	root       *category   // 类别
+	collection *collection // 数据集合
 }
 
 // cursor 游标
@@ -47,24 +48,38 @@ func newCategory() *category {
 	return &category{}
 }
 
+func (csf *Classify) New() *Classify {
+	return &Classify{
+		collection: &collection{values: map[interface{}]*collection{}},
+	}
+}
+
 func (csf *Classify) Build(path string) {
 	csf.root = &category{}
 	extract(csf.root, headerCompletion([]byte(path)))
 }
 
 func (csf *Classify) Put(item interface{}) {
-	for i, cur := range csf.root.Next {
-		csf.put(cur, csf.collection[i], item)
+	for _, cur := range csf.root.Next {
+		csf.put(cur, csf.collection, item)
 	}
 }
 
-func (csf *Classify) put(parent *category, collection *collection, item interface{}) {
+func (csf *Classify) put(parent *category, cln *collection, item interface{}) {
 	switch parent.CType {
 	case CollectField: // 字段
 		// itype := reflect.TypeOf(item)
-		// ivalue := reflect.ValueOf(item)
-		// v := ivalue.FieldByName(parent.CMethod).Interface()
-		// csf.collection[v] =
+		ivalue := reflect.ValueOf(item)
+		v := ivalue.FieldByName(parent.CMethod).Interface()
+		var ok bool
+		var ncln *collection
+		if ncln, ok = cln.values[v]; !ok {
+			ncln = &collection{
+				values: map[interface{}]*collection{},
+			}
+			ncln.values[v] = ncln
+		}
+
 	case CollectMethod: // 方法
 	}
 }

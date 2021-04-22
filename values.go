@@ -2,5 +2,6 @@ package classify
 
 // values 值+
 type collection struct {
-	values map[interface{}]*collection
+	valuesdict map[interface{}]*collection
+	values     []interface{}
 }

@@ -20,7 +20,7 @@ const (
 
 )
 
-type Classify struct {
+type Classify2 struct {
 	Handlers   map[string]CollectHandler
 	root       *category   // 类别
 	collection *collection // 数据集合
@@ -48,39 +48,65 @@ func newCategory() *category {
 	return &category{}
 }
 
-func (csf *Classify) New() *Classify {
-	return &Classify{
-		collection: &collection{values: map[interface{}]*collection{}},
+func New2() *Classify2 {
+	return &Classify2{
+		collection: &collection{valuesdict: map[interface{}]*collection{}},
 	}
 }
 
-func (csf *Classify) Build(path string) {
+func (csf *Classify2) Build(path string) {
 	csf.root = &category{}
 	extract(csf.root, headerCompletion([]byte(path)))
 }
 
-func (csf *Classify) Put(item interface{}) {
+func (csf *Classify2) BuildWithMethod(path string) {
+	csf.root = &category{}
+	extract(csf.root, headerCompletion([]byte(path)))
+}
+
+func (csf *Classify2) Put(item interface{}) {
+	itype := reflect.TypeOf(item)
+	ivalue := reflect.ValueOf(item)
+	if itype.Kind() == reflect.Ptr {
+		ivalue = ivalue.Elem()
+	}
 	for _, cur := range csf.root.Next {
-		csf.put(cur, csf.collection, item)
+		csf.put(cur, csf.collection, item, itype, ivalue)
 	}
 }
 
-func (csf *Classify) put(parent *category, cln *collection, item interface{}) {
+func (csf *Classify2) put(parent *category, cln *collection, item interface{}, itype reflect.Type, ivalue reflect.Value) {
 	switch parent.CType {
 	case CollectField: // 字段
-		// itype := reflect.TypeOf(item)
-		ivalue := reflect.ValueOf(item)
 		v := ivalue.FieldByName(parent.CMethod).Interface()
 		var ok bool
 		var ncln *collection
-		if ncln, ok = cln.values[v]; !ok {
+		if ncln, ok = cln.valuesdict[v]; !ok {
 			ncln = &collection{
-				values: map[interface{}]*collection{},
+				valuesdict: map[interface{}]*collection{},
 			}
-			ncln.values[v] = ncln
+			cln.valuesdict[v] = ncln
+		}
+		for _, ncategory := range parent.Next {
+			csf.put(ncategory, ncln, item, itype, ivalue)
 		}
 
 	case CollectMethod: // 方法
+
+	case CollectDescEnd:
+		v := ivalue.FieldByName(parent.CMethod).Interface()
+		var ok bool
+		var ncln *collection
+		if ncln, ok = cln.valuesdict[v]; !ok {
+			ncln = &collection{
+				valuesdict: map[interface{}]*collection{},
+			}
+			cln.valuesdict[v] = ncln
+		}
+
+		for _, ncategory := range parent.Next {
+			csf.put(ncategory, ncln, item, itype, ivalue)
+		}
 	}
 }
 

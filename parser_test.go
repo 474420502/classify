@@ -11,6 +11,25 @@ func init() {
 	log.SetFlags(log.Llongfile)
 }
 
+type Item struct {
+	Name      string
+	Region    string
+	Country   string
+	Coin      int64
+	ExtraCoin int64
+}
+
+func TestPut(t *testing.T) {
+	clsfy := New()
+	clsfy.Build(`region<Region>.country<Country>.@Name,
+	 `)
+	clsfy.Put(&Item{
+		Name:    "test",
+		Region:  "Arab",
+		Country: "USA",
+	})
+}
+
 func TestParserCPath(t *testing.T) {
 	f, err := os.Open("./test1.cpath")
 	if err != nil {

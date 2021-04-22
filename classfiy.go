@@ -39,14 +39,21 @@ type CData struct {
 type CPath struct {
 	Name     string
 	Handler  CategoryHandler
-	IsValues bool
 	Children map[string]*CPath
+
+	IsValues bool
 }
 
 // New 创建新分类器
 func New() *Classify {
 	c := &Classify{}
 	return c
+}
+
+func (c *Classify) Build(modepath string) {
+	core := &extractCore{}
+	cursor := headerCompletion([]byte(modepath))
+	core.extract(c, cursor)
 }
 
 // Categorys 返回所有数据模型的类别. 模型是指 AddCategory的name. Keys是返回分类存在的Keys
@@ -377,4 +384,208 @@ func autoComapre(k1, k2 interface{}) int {
 		panic(fmt.Sprintf("%v kind not handled", t1.Kind()))
 	}
 
+}
+
+type extractCore struct {
+	Methods map[string]CategoryHandler
+}
+
+// extract 提取初始入口
+func (core *extractCore) extract(parent *Classify, cur *cursor) {
+
+	for ; cur.Index < cur.Size; cur.Index++ {
+		c := cur.Data[cur.Index]
+		switch c {
+		case ' ', '\n':
+			continue
+		case '.':
+			// 进入 Second paragraph
+
+			cur.Index++
+			c = cur.Data[cur.Index]
+			switch c {
+			case ' ':
+				log.Panic("space behind '.'")
+			case '[':
+				for _, aCur := range core.extractCollectArray(cur) {
+					log.Println(string(aCur.Data[aCur.Index:aCur.Size]))
+					core.extract(parent, aCur)
+				}
+				cur.Index++
+			case '@':
+				// 提取排序字段
+				cur.Index++
+
+				var isHandler bool
+				c = cur.Data[cur.Index]
+				if c == '#' {
+					isHandler = true
+					cur.Index++
+				}
+
+				var label []byte
+				for (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+					label = append(label, c)
+					cur.Index++
+					c = cur.Data[cur.Index]
+				}
+
+				if len(label) == 0 {
+					parent.Collect()
+					return
+				}
+
+				fname := string(label)
+				log.Println("@" + fname)
+
+				if isHandler {
+					parent.CollectCategory(core.Methods[fname])
+					return
+				}
+
+				parent.CollectCategory(func(value interface{}) interface{} {
+					v := reflect.ValueOf(value)
+					if v.Type().Kind() == reflect.Ptr {
+						v = v.Elem()
+					}
+					return v.FieldByName(fname).Interface()
+				})
+
+				return
+			default:
+				// 提取字段名
+				core.extractClassify(parent, cur)
+			}
+
+		default:
+			// 提取字段名
+			core.extractClassify(parent, cur)
+		}
+	}
+}
+
+func (core *extractCore) extractClassify(parent *Classify, cur *cursor) {
+	c := cur.Data[cur.Index]
+
+	if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+		var label []byte = []byte{c}
+		cur.Index++
+		c = cur.Data[cur.Index]
+		for (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+			label = append(label, c)
+			cur.Index++
+			c = cur.Data[cur.Index]
+		}
+
+		cname := string(label)
+
+		switch c {
+		case '<':
+
+			// 字段
+			fname := core.extractCollectField(cur)
+			child := parent.AddCategory(cname, func(value interface{}) interface{} {
+				v := reflect.ValueOf(value)
+				if v.Type().Kind() == reflect.Ptr {
+					v = v.Elem()
+				}
+
+				return v.FieldByName(fname).Interface()
+			})
+
+			core.extract(child, cur)
+		case '(':
+
+			mname := core.extractCollectMethod(cur)
+			child := parent.AddCategory(cname, core.Methods[mname])
+			core.extract(child, cur)
+			// 方法
+		case '[':
+			// 并行数组
+			for _, aCur := range core.extractCollectArray(cur) {
+				core.extract(parent, aCur)
+			}
+			cur.Index++
+		}
+	}
+	// else {
+	// 	log.Println(string(cur.Data[cur.Index:]))
+	// }
+}
+
+func (core *extractCore) extractCollectField(cur *cursor) string {
+	var fieldname []byte
+	cur.Index++
+
+	for ; cur.Index < cur.Size; cur.Index++ {
+		c := cur.Data[cur.Index]
+		switch c {
+		case ' ':
+			continue
+		case '>':
+			cur.Index++
+			return string(fieldname)
+		default:
+			fieldname = append(fieldname, c)
+		}
+	}
+	log.Panic("can't find '>' end char")
+	return ""
+}
+
+func (core *extractCore) extractCollectMethod(cur *cursor) string {
+	var methodname []byte
+	cur.Index++
+
+	for ; cur.Index < cur.Size; cur.Index++ {
+		c := cur.Data[cur.Index]
+		switch c {
+		case ' ':
+			continue
+		case ')':
+			cur.Index++
+			return string(methodname)
+		default:
+			methodname = append(methodname, c)
+		}
+	}
+	log.Panic("can't find ')' end char")
+	return ""
+}
+
+func (core *extractCore) extractCollectArray(cur *cursor) (Objects []*cursor) {
+
+	cur.Index++
+	start := cur.Index
+
+	for ; cur.Index < cur.Size; cur.Index++ {
+		c := cur.Data[cur.Index]
+		switch c {
+		case ' ':
+			continue
+		case ',':
+			aCur := &cursor{
+				Data:  cur.Data,
+				Index: start,
+				Size:  cur.Index,
+			}
+			Objects = append(Objects, aCur)
+			start = aCur.Size + 1
+		case ']':
+
+			aCur := &cursor{
+				Data:  cur.Data,
+				Index: start,
+				Size:  cur.Index,
+			}
+			Objects = append(Objects, aCur)
+			cur.Index++
+			return
+		default:
+			// methodname = append(methodname, c)
+		}
+	}
+
+	log.Panic("can't find ']' end char")
+	return
 }

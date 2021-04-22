@@ -20,7 +20,7 @@ type Item struct {
 }
 
 func TestPut(t *testing.T) {
-	clsfy := New()
+	clsfy := New2()
 	clsfy.Build(`region<Region>.country<Country>.@Name,
 	 `)
 	clsfy.Put(&Item{
@@ -46,7 +46,7 @@ func TestParserCPath(t *testing.T) {
 	cur := headerCompletion(src)
 
 	// First paragraph 标签名检测
-	extract(parent, cur)
+	extract2(parent, cur)
 
 	log.Println(parent)
 	log.Println("")

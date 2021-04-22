@@ -56,12 +56,12 @@ func New2() *Classify2 {
 
 func (csf *Classify2) Build(path string) {
 	csf.root = &category{}
-	extract(csf.root, headerCompletion([]byte(path)))
+	extract2(csf.root, headerCompletion([]byte(path)))
 }
 
 func (csf *Classify2) BuildWithMethod(path string) {
 	csf.root = &category{}
-	extract(csf.root, headerCompletion([]byte(path)))
+	extract2(csf.root, headerCompletion([]byte(path)))
 }
 
 func (csf *Classify2) Put(item interface{}) {
@@ -110,8 +110,8 @@ func (csf *Classify2) put(parent *category, cln *collection, item interface{}, i
 	}
 }
 
-// extract 提取初始入口
-func extract(parent *category, cur *cursor) {
+// extract2 提取初始入口
+func extract2(parent *category, cur *cursor) {
 
 	for ; cur.Index < cur.Size; cur.Index++ {
 		c := cur.Data[cur.Index]
@@ -127,9 +127,9 @@ func extract(parent *category, cur *cursor) {
 			case ' ':
 				log.Panic("space behind '.'")
 			case '[':
-				for _, aCur := range extractCollectArray(cur) {
+				for _, aCur := range extractCollectArray2(cur) {
 					log.Println(string(aCur.Data[aCur.Index:aCur.Size]))
-					extract(parent, aCur)
+					extract2(parent, aCur)
 				}
 				cur.Index++
 			case '@':
@@ -158,17 +158,17 @@ func extract(parent *category, cur *cursor) {
 				return
 			default:
 				// 提取字段名
-				extractClassify(parent, cur)
+				extractClassify2(parent, cur)
 			}
 
 		default:
 			// 提取字段名
-			extractClassify(parent, cur)
+			extractClassify2(parent, cur)
 		}
 	}
 }
 
-func extractClassify(parent *category, cur *cursor) {
+func extractClassify2(parent *category, cur *cursor) {
 	c := cur.Data[cur.Index]
 
 	if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
@@ -191,17 +191,17 @@ func extractClassify(parent *category, cur *cursor) {
 		case '<':
 			// 字段
 			classify.CType = CollectField
-			classify.CMethod = extractCollectField(cur)
-			extract(classify, cur)
+			classify.CMethod = extractCollectField2(cur)
+			extract2(classify, cur)
 		case '(':
 			classify.CType = CollectMethod
-			classify.CMethod = extractCollectMethod(cur)
-			extract(classify, cur)
+			classify.CMethod = extractCollectMethod2(cur)
+			extract2(classify, cur)
 			// 方法
 		case '[':
 			// 并行数组
-			for _, aCur := range extractCollectArray(cur) {
-				extract(classify, aCur)
+			for _, aCur := range extractCollectArray2(cur) {
+				extract2(classify, aCur)
 			}
 			cur.Index++
 		}
@@ -210,7 +210,7 @@ func extractClassify(parent *category, cur *cursor) {
 	}
 }
 
-func extractCollectField(cur *cursor) string {
+func extractCollectField2(cur *cursor) string {
 	var fieldname []byte
 	cur.Index++
 
@@ -230,7 +230,7 @@ func extractCollectField(cur *cursor) string {
 	return ""
 }
 
-func extractCollectMethod(cur *cursor) string {
+func extractCollectMethod2(cur *cursor) string {
 	var methodname []byte
 	cur.Index++
 
@@ -250,7 +250,7 @@ func extractCollectMethod(cur *cursor) string {
 	return ""
 }
 
-func extractCollectArray(cur *cursor) (Objects []*cursor) {
+func extractCollectArray2(cur *cursor) (Objects []*cursor) {
 
 	cur.Index++
 	start := cur.Index

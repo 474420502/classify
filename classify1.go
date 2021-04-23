@@ -1,306 +1,59 @@
 package classify
 
 import (
-	"log"
-	"reflect"
+	"fmt"
+
+	"github.com/474420502/focus/tree/vbtkey"
 )
 
-type CollectHandler func(value interface{}) interface{}
-
-type CollectType int
-
-const (
-	CollectField  CollectType = 1 // 字段
-	CollectMethod CollectType = 2 // 方法
-	CollectArray  CollectType = 3 // 并行数组
-
-	CollectEnd     CollectType = 4 // 结束
-	CollectDescEnd CollectType = 5 // 排序 降 结束
-	CollectAscEnd  CollectType = 6 // 排序 升 结束
-
-)
-
-type Classify2 struct {
-	Handlers   map[string]CollectHandler
-	root       *category   // 类别
-	collection *collection // 数据集合
+// 分类
+type Classify struct {
+	Categorys []*Category
+	Values    *vbtkey.Tree
 }
 
-// cursor 游标
-type cursor struct {
-	Data    []byte
-	Index   int
-	Size    int
-	Unknown int
+type CategoryHandler func(value interface{}) interface{}
+
+// Category 类别
+type Category struct {
+	Name      string
+	Handler   CategoryHandler
+	IsCollect bool
 }
 
-type category struct {
-	Name string
-
-	CType   CollectType    // 提取类型
-	CMethod string         // 提取方法
-	Collect CollectHandler // 收集分类的方法
-	// IsEnd   bool           // 是否结尾
-	Next []*category
+func New() *Classify {
+	return &Classify{}
 }
 
-func newCategory() *category {
-	return &category{}
+func (c *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
+	c.Categorys = append(c.Categorys, &Category{
+		Name:    name,
+		Handler: handler,
+	})
+	return c
 }
 
-func New2() *Classify2 {
-	return &Classify2{
-		collection: &collection{valuesdict: map[interface{}]*collection{}},
-	}
-}
+func (c *Classify) Keys(paths ...interface{}) (result []interface{}) {
+	var values *vbtkey.Tree = c.Values
+	// var category *Category
 
-func (csf *Classify2) Build(path string) {
-	csf.root = &category{}
-	extract2(csf.root, headerCompletion([]byte(path)))
-}
-
-func (csf *Classify2) BuildWithMethod(path string) {
-	csf.root = &category{}
-	extract2(csf.root, headerCompletion([]byte(path)))
-}
-
-func (csf *Classify2) Put(item interface{}) {
-	itype := reflect.TypeOf(item)
-	ivalue := reflect.ValueOf(item)
-	if itype.Kind() == reflect.Ptr {
-		ivalue = ivalue.Elem()
-	}
-	for _, cur := range csf.root.Next {
-		csf.put(cur, csf.collection, item, itype, ivalue)
-	}
-}
-
-func (csf *Classify2) put(parent *category, cln *collection, item interface{}, itype reflect.Type, ivalue reflect.Value) {
-	switch parent.CType {
-	case CollectField: // 字段
-		v := ivalue.FieldByName(parent.CMethod).Interface()
-		var ok bool
-		var ncln *collection
-		if ncln, ok = cln.valuesdict[v]; !ok {
-			ncln = &collection{
-				valuesdict: map[interface{}]*collection{},
-			}
-			cln.valuesdict[v] = ncln
-		}
-		for _, ncategory := range parent.Next {
-			csf.put(ncategory, ncln, item, itype, ivalue)
-		}
-
-	case CollectMethod: // 方法
-
-	case CollectDescEnd:
-		v := ivalue.FieldByName(parent.CMethod).Interface()
-		var ok bool
-		var ncln *collection
-		if ncln, ok = cln.valuesdict[v]; !ok {
-			ncln = &collection{
-				valuesdict: map[interface{}]*collection{},
-			}
-			cln.valuesdict[v] = ncln
-		}
-
-		for _, ncategory := range parent.Next {
-			csf.put(ncategory, ncln, item, itype, ivalue)
-		}
-	}
-}
-
-// extract2 提取初始入口
-func extract2(parent *category, cur *cursor) {
-
-	for ; cur.Index < cur.Size; cur.Index++ {
-		c := cur.Data[cur.Index]
-		switch c {
-		case ' ', '\n':
-			continue
-		case '.':
-			// 进入 Second paragraph
-
-			cur.Index++
-			c = cur.Data[cur.Index]
-			switch c {
-			case ' ':
-				log.Panic("space behind '.'")
-			case '[':
-				for _, aCur := range extractCollectArray2(cur) {
-					log.Println(string(aCur.Data[aCur.Index:aCur.Size]))
-					extract2(parent, aCur)
-				}
-				cur.Index++
-			case '@':
-				// 提取排序字段
-				cur.Index++
-				classify := &category{}
-				// classify.IsEnd = true
-
-				c = cur.Data[cur.Index]
-				if c == '!' {
-					classify.CType = CollectAscEnd
-					cur.Index++
-				} else {
-					classify.CType = CollectDescEnd
-				}
-
-				var label []byte
-				for (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
-					label = append(label, c)
-					cur.Index++
-					c = cur.Data[cur.Index]
-				}
-				classify.Name = string(label)
-				log.Println("@" + classify.Name)
-				parent.Next = append(parent.Next, classify)
-				return
-			default:
-				// 提取字段名
-				extractClassify2(parent, cur)
-			}
-
-		default:
-			// 提取字段名
-			extractClassify2(parent, cur)
-		}
-	}
-}
-
-func extractClassify2(parent *category, cur *cursor) {
-	c := cur.Data[cur.Index]
-
-	if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
-		var label []byte = []byte{c}
-		cur.Index++
-		c = cur.Data[cur.Index]
-		for (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
-			label = append(label, c)
-			cur.Index++
-			c = cur.Data[cur.Index]
-		}
-
-		var classify *category = newCategory()
-		classify.Name = string(label)
-		log.Println(classify.Name)
-		parent.Next = append(parent.Next, classify)
-
-		// 进入 Second paragraph
-		switch c {
-		case '<':
-			// 字段
-			classify.CType = CollectField
-			classify.CMethod = extractCollectField2(cur)
-			extract2(classify, cur)
-		case '(':
-			classify.CType = CollectMethod
-			classify.CMethod = extractCollectMethod2(cur)
-			extract2(classify, cur)
-			// 方法
-		case '[':
-			// 并行数组
-			for _, aCur := range extractCollectArray2(cur) {
-				extract2(classify, aCur)
-			}
-			cur.Index++
-		}
-	} else {
-		log.Println(string(c))
-	}
-}
-
-func extractCollectField2(cur *cursor) string {
-	var fieldname []byte
-	cur.Index++
-
-	for ; cur.Index < cur.Size; cur.Index++ {
-		c := cur.Data[cur.Index]
-		switch c {
-		case ' ':
-			continue
-		case '>':
-			cur.Index++
-			return string(fieldname)
-		default:
-			fieldname = append(fieldname, c)
-		}
-	}
-	log.Panic("can't find '>' end char")
-	return ""
-}
-
-func extractCollectMethod2(cur *cursor) string {
-	var methodname []byte
-	cur.Index++
-
-	for ; cur.Index < cur.Size; cur.Index++ {
-		c := cur.Data[cur.Index]
-		switch c {
-		case ' ':
-			continue
-		case ')':
-			cur.Index++
-			return string(methodname)
-		default:
-			methodname = append(methodname, c)
-		}
-	}
-	log.Panic("can't find ')' end char")
-	return ""
-}
-
-func extractCollectArray2(cur *cursor) (Objects []*cursor) {
-
-	cur.Index++
-	start := cur.Index
-
-	for ; cur.Index < cur.Size; cur.Index++ {
-		c := cur.Data[cur.Index]
-		switch c {
-		case ' ':
-			continue
-		case ',':
-			aCur := &cursor{
-				Data:  cur.Data,
-				Index: start,
-				Size:  cur.Index,
-			}
-			Objects = append(Objects, aCur)
-			start = aCur.Size + 1
-		case ']':
-
-			aCur := &cursor{
-				Data:  cur.Data,
-				Index: start,
-				Size:  cur.Index,
-			}
-			Objects = append(Objects, aCur)
-			cur.Index++
-			return
-		default:
-			// methodname = append(methodname, c)
-		}
-	}
-
-	log.Panic("can't find ']' end char")
-	return
-}
-
-func headerCompletion(data []byte) *cursor {
-
-	for i := 0; i < len(data); i++ {
-		if data[i] == ' ' {
-			continue
+	for _, p := range paths {
+		// category = c.Categorys[i]
+		if child, ok := values.Get(p); ok {
+			values = child.(*vbtkey.Tree)
 		} else {
-			cur := &cursor{}
-			cur.Data = append(cur.Data, data...)
-			cur.Size = len(cur.Data)
-			cur.Data = append(cur.Data, ' ')
-			return cur
+			panic(fmt.Errorf("no key %v", p))
 		}
 	}
 
-	log.Panic("data is nil")
-	return nil
+	// if category.IsCollect {
+
+	// }
+
+	values.Traversal(func(k, v interface{}) bool {
+		result = append(result, k)
+		return true
+	})
+
+	return
 }

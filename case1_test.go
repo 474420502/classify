@@ -15,6 +15,10 @@ import (
 	database "git.nonolive.co/eson.hsm/databoard-database-myrocks"
 )
 
+func init() {
+	log.SetFlags(log.Llongfile)
+}
+
 var db = database.DB
 
 // GiftItem 单条充值数据
@@ -38,8 +42,8 @@ type GiftItem struct {
 	CreateAt      time.Time `json:"create_at"`       // 送礼时间
 }
 
-// GiftItems 查询礼物的数据
-func GiftItems(start, end time.Time) (result []*GiftItem) {
+// QueryGiftItems 查询礼物的数据
+func QueryGiftItems(start, end time.Time) (result []*GiftItem) {
 
 	db.Do(func(db *sql.DB) {
 		ssql := fmt.Sprintf("select gift_id,gift_item_id,gift_name,sender,receive,sender_user_id,receive_user_id,item_type,pic,coin,real_coin,quantity,sfc,region_sfc,rfc,region_rfc,create_at  from %s where create_at >= ? and create_at < ? and mod(gift_item_id, 50) = 0 ", "gift_items")
@@ -101,10 +105,10 @@ func loadGiftItems() (result []*GiftItem) {
 	return
 }
 
-func TestDownload(t *testing.T) {
+func XTestDownload(t *testing.T) {
 	now := time.Now()
 	today := now.Truncate(time.Hour * 24)
-	items := GiftItems(today.Add(-time.Hour*24*5), today)
+	items := QueryGiftItems(today.Add(-time.Hour*24*5), today)
 
 	// var items []*GiftItem
 	// for _, item := range items2 {
@@ -136,6 +140,14 @@ func TestDownload(t *testing.T) {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+type Item struct {
+	Name      string
+	Region    string
+	Country   string
+	Coin      int64
+	ExtraCoin int64
 }
 
 func Test1(t *testing.T) {
@@ -179,20 +191,52 @@ func Test2(t *testing.T) {
 	items := loadGiftItems()
 
 	for _, item := range items {
-		// log.Println(item.RegionRFC, item.SFC)
 		clsfy.Put(item)
 	}
 
-	log.Println(clsfy.Categorys())
-	log.Println(len(items), clsfy.Keys(), clsfy.Categorys())
-
+	var getitems []*GiftItem
 	for _, region := range clsfy.Keys() {
-		log.Println(region)
 		for _, country := range clsfy.Keys(region) {
-			log.Println(country)
-			var items []*GiftItem
-			clsfy.Get(&items, region, country)
-			log.Println(items[0].RFC, items[0].RegionSFC)
+			var gitems []*GiftItem
+			clsfy.Get(&gitems, region, country)
+			getitems = append(getitems, gitems...)
 		}
 	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].GiftItemID > items[j].GiftItemID
+	})
+
+	sort.Slice(getitems, func(i, j int) bool {
+		return getitems[i].GiftItemID > getitems[j].GiftItemID
+	})
+
+	if len(items) != len(getitems) {
+		t.Error("items.len != getitems.len")
+		return
+	}
+
+	for i, item := range items {
+
+		if item.GiftItemID != getitems[i].GiftItemID {
+			t.Error("items != getitems", i)
+			return
+		}
+	}
+}
+
+func Test3(t *testing.T) {
+
+	clsfy := New()
+	clsfy.Build(`region<RegionRFC>.country<RFC>.@Coin`)
+
+	// items := loadGiftItemsJson()
+
+	items := loadGiftItems()
+
+	log.Println(clsfy.Categorys())
+	for _, item := range items {
+		clsfy.Put(item)
+	}
+
 }

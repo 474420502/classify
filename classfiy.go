@@ -1,4 +1,4 @@
-// package classify
+package classify
 
 // import (
 // 	"encoding/json"

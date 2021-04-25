@@ -150,6 +150,63 @@ type Item struct {
 	ExtraCoin int64
 }
 
+func Test0(t *testing.T) {
+	c := New()
+	c.AddCategory("region", func(value interface{}) interface{} {
+		item := value.(*Item)
+		return item.Region
+	}).AddCategory("country", func(value interface{}) interface{} {
+		item := value.(*Item)
+		return item.Country
+	}).Collect()
+
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab",
+		Country: "USA",
+	})
+
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab2",
+		Country: "USA",
+	})
+
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab2",
+		Country: "CN",
+	})
+
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab",
+		Country: "USA2",
+	})
+
+	var result, expect string
+	result = fmt.Sprintf("%#v", c.Keys())
+	expect = `[]interface {}{"Arab", "Arab2"}`
+	if result != expect {
+		t.Error(result, "!=", expect)
+	}
+
+	defer func() {
+		if err := recover(); err == nil {
+			t.Error("check Keys()")
+		}
+	}()
+
+	for _, key := range c.Keys() {
+		// log.Println(c.Keys(key))
+		for _, key2 := range c.Keys(key) {
+			c.Keys(key, key2)
+			panic(nil)
+		}
+	}
+	// c.debugPrint(0)
+}
+
 func Test1(t *testing.T) {
 	c := New()
 	c.AddCategory("region", func(value interface{}) interface{} {
@@ -174,10 +231,53 @@ func Test1(t *testing.T) {
 
 	c.Put(&Item{
 		Name:    "test",
+		Region:  "Arab2",
+		Country: "CN",
+	})
+
+	c.Put(&Item{
+		Name:    "test",
 		Region:  "Arab",
 		Country: "USA2",
+		Coin:    1,
 	})
-	log.Println(c.Keys())
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab",
+		Country: "USA2",
+		Coin:    5,
+	})
+
+	c.Put(&Item{
+		Name:    "test",
+		Region:  "Arab",
+		Country: "USA2",
+		Coin:    1,
+	})
+
+	// var result, expect string
+	var items []*Item
+	c.Get(&items, "Arab", "USA2")
+	if len(items) != 3 {
+		t.Error("len != 3 is error.")
+		for _, item := range items {
+			log.Printf("%#v", item)
+		}
+	}
+
+	// c.Get(&items, "Arab")
+	// for _, item := range items {
+	// 	log.Printf("%#v", item)
+	// }
+
+	c.Get(&items)
+	if len(items) != 6 {
+		t.Error("len != 6 is error.")
+		for _, item := range items {
+			log.Printf("%#v", item)
+		}
+	}
+
 	// c.debugPrint(0)
 }
 

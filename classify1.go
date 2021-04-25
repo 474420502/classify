@@ -51,8 +51,11 @@ func (c *Classify) Categorys() string {
 	var content []byte
 	for _, cate := range c.categorys {
 		content = append(content, []byte(cate.Name)...)
-		content = append(content, '.')
+		if !cate.IsCollect {
+			content = append(content, '.')
+		}
 	}
+
 	if content[len(content)-1] == '.' {
 		return string(content[:len(content)-1])
 	}
@@ -61,7 +64,7 @@ func (c *Classify) Categorys() string {
 
 func (c *Classify) Collect() {
 	c.categorys = append(c.categorys, &Category{
-		Name:      "",
+		Name:      "@",
 		Handler:   defaultCategoryHandler,
 		IsCollect: true,
 	})
@@ -69,7 +72,7 @@ func (c *Classify) Collect() {
 
 func (c *Classify) CollectCategory(handler CategoryHandler) {
 	c.categorys = append(c.categorys, &Category{
-		Name:      "",
+		Name:      "@",
 		Handler:   handler,
 		IsCollect: true,
 	})
@@ -78,7 +81,9 @@ func (c *Classify) CollectCategory(handler CategoryHandler) {
 func (c *Classify) Keys(paths ...interface{}) (result []interface{}) {
 	var values *vbtkey.Tree = c.Values
 	// var category *Category
-
+	if len(paths) >= len(c.categorys)-1 {
+		panic(fmt.Sprintf("categorys len is %d only: %#v", len(c.categorys)-1, c.Categorys()))
+	}
 	for _, p := range paths {
 		// category = c.Categorys[i]
 		if child, ok := values.Get(p); ok {
@@ -111,14 +116,59 @@ func put(categorys []*Category, cidx int, Values *vbtkey.Tree, v interface{}) {
 	} else {
 		// 判断Values是否存在
 		var NextValues *vbtkey.Tree
-		if vs, ok := Values.Get(cate.Name); ok {
+		key := cate.Handler(v)
+		if vs, ok := Values.Get(key); ok {
 			NextValues = vs.(*vbtkey.Tree)
 		} else {
 			NextValues = vbtkey.New(autoComapre)
+			Values.Put(key, NextValues)
 		}
-		Values.Put(cate.Name, NextValues)
 		put(categorys, cidx+1, NextValues, v)
 	}
+}
+
+func (c *Classify) Get(out interface{}, vPaths ...interface{}) {
+
+	var values *vbtkey.Tree = c.Values
+	if len(vPaths) >= len(c.categorys) {
+		panic(fmt.Sprintf("values keys deepth is %d only: %#v", len(c.categorys), c.Categorys()))
+	}
+
+	if reflect.TypeOf(out).Kind() != reflect.Ptr {
+		panic("out must ptr")
+	}
+
+	outv := reflect.ValueOf(out)
+	result := outv.Elem()
+	result = reflect.MakeSlice(result.Type(), 0, 0)
+	// log.Println(result)
+
+	var cidx = 0
+	for ; cidx < len(vPaths); cidx++ {
+		vp := vPaths[cidx]
+
+		if child, ok := values.Get(vp); ok {
+			values = child.(*vbtkey.Tree)
+		}
+	}
+
+	var getValues func(cidx int, values *vbtkey.Tree)
+	getValues = func(cidx int, values *vbtkey.Tree) {
+		category := c.categorys[cidx]
+		if category.IsCollect {
+			values.Traversal(func(k, v interface{}) bool {
+				result = reflect.Append(result, reflect.ValueOf(v))
+				return true
+			})
+		} else {
+			values.Traversal(func(k, v interface{}) bool {
+				getValues(cidx+1, v.(*vbtkey.Tree))
+				return true
+			})
+		}
+	}
+	getValues(cidx, values)
+	outv.Elem().Set(result)
 }
 
 func autoComapre(k1, k2 interface{}) int {

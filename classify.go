@@ -21,14 +21,14 @@ var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{}
 
 // 分类
 type Classify struct {
-	categorys []*Category
+	categorys []*hCategory
 	Values    *vbtkey.Tree
 }
 
 type CategoryHandler func(value interface{}) interface{}
 
-// Category 类别
-type Category struct {
+// hCategory 类别
+type hCategory struct {
 	Name      string
 	Handler   CategoryHandler
 	IsCollect bool
@@ -125,7 +125,7 @@ func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 }
 
 func (clsfy *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
-	clsfy.categorys = append(clsfy.categorys, &Category{
+	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      name,
 		Handler:   handler,
 		IsCollect: false,
@@ -152,7 +152,7 @@ func (clsfy *Classify) Categorys() string {
 }
 
 func (clsfy *Classify) Collect() {
-	clsfy.categorys = append(clsfy.categorys, &Category{
+	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      "@",
 		Handler:   defaultCategoryHandler,
 		IsCollect: true,
@@ -160,7 +160,7 @@ func (clsfy *Classify) Collect() {
 }
 
 func (clsfy *Classify) CollectCategory(handler CategoryHandler) {
-	clsfy.categorys = append(clsfy.categorys, &Category{
+	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      "@",
 		Handler:   handler,
 		IsCollect: true,
@@ -197,7 +197,7 @@ func (clsfy *Classify) Put(v interface{}) {
 	put(clsfy.categorys, 0, clsfy.Values, v)
 }
 
-func put(categorys []*Category, cidx int, Values *vbtkey.Tree, v interface{}) {
+func put(categorys []*hCategory, cidx int, Values *vbtkey.Tree, v interface{}) {
 	cate := categorys[cidx]
 	if cate.IsCollect {
 		Values.Put(cate.Handler(v), v)

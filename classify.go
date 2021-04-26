@@ -98,7 +98,7 @@ func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 				return v.FieldByName(string(cmethod)).Interface()
 			})
 		case 2:
-			log.Println(string(cname), string(cmethod))
+			// log.Println(string(cname), string(cmethod))
 			fidx, err := strconv.Atoi(string(cmethod))
 			if err != nil {
 				panic(err)

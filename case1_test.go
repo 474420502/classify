@@ -328,7 +328,7 @@ func Test2(t *testing.T) {
 func Test3(t *testing.T) {
 
 	clsfy := New()
-	clsfy.Build(` region[1]. country[0].@Coin `,
+	clsfy.Build(` region[1]. country[0].@ `,
 		func(value interface{}) interface{} {
 			return value.(*GiftItem).RFC
 		},
@@ -341,7 +341,10 @@ func Test3(t *testing.T) {
 
 	items := loadGiftItems()
 
-	log.Println(clsfy.Categorys())
+	// log.Println(clsfy.Categorys())
+	if clsfy.Categorys() != "region.country.@" {
+		t.Errorf("error output Categorys %#v", clsfy.Categorys())
+	}
 	for _, item := range items {
 		clsfy.Put(item)
 	}

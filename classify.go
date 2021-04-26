@@ -38,6 +38,12 @@ func New() *Classify {
 	return &Classify{}
 }
 
+func NewWithMode(mode string, handlers ...CategoryHandler) *Classify {
+	c := New()
+	c.Build(mode, handlers...)
+	return c
+}
+
 func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 
 	for _, token := range bytes.Split([]byte(mode), []byte{'.'}) {
@@ -195,6 +201,20 @@ func (clsfy *Classify) Put(v interface{}) {
 		clsfy.Values = vbtkey.New(autoComapre)
 	}
 	put(clsfy.categorys, 0, clsfy.Values, v)
+}
+
+func (clsfy *Classify) PutSlice(items interface{}) {
+	if clsfy.Values == nil {
+		clsfy.Values = vbtkey.New(autoComapre)
+	}
+	vitems := reflect.ValueOf(items)
+	if vitems.Type().Kind() != reflect.Slice {
+		panic(" input must slice ")
+	}
+	for i := 0; i < vitems.Len(); i++ {
+		put(clsfy.categorys, 0, clsfy.Values, vitems.Index(i).Interface())
+	}
+
 }
 
 func put(categorys []*hCategory, cidx int, Values *vbtkey.Tree, v interface{}) {

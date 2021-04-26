@@ -113,12 +113,18 @@ func (c *Classify) Keys(paths ...interface{}) []interface{} {
 }
 
 // Put 把数据压进分类器
-func (c *Classify) Put(v interface{}) {
+func (c *Classify) Put(values ...interface{}) {
 	if c.CategoryData == nil { //主要为了NewClassify 不添加其他属性. 使用nil指针
 		c.CategoryData = &CData{}
 	}
 
-	put(c.CategoryPath, c.CategoryData, v)
+	if len(values) == 1 {
+		put(c.CategoryPath, c.CategoryData, values[0])
+	} else {
+		for _, v := range values {
+			put(c.CategoryPath, c.CategoryData, v)
+		}
+	}
 
 }
 

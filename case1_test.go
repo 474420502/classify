@@ -1,9 +1,7 @@
 package classify
 
 import (
-	"bytes"
 	"compress/gzip"
-	"database/sql"
 	"encoding/gob"
 	"fmt"
 	"log"
@@ -11,15 +9,13 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	database "git.nonolive.co/eson.hsm/databoard-database-myrocks"
 )
 
 func init() {
 	log.SetFlags(log.Llongfile)
 }
 
-var db = database.DB
+// var db = database.DB
 
 // GiftItem 单条充值数据
 type GiftItem struct {
@@ -43,49 +39,49 @@ type GiftItem struct {
 }
 
 // QueryGiftItems 查询礼物的数据
-func QueryGiftItems(start, end time.Time) (result []*GiftItem) {
+// func QueryGiftItems(start, end time.Time) (result []*GiftItem) {
 
-	db.Do(func(db *sql.DB) {
-		ssql := fmt.Sprintf("select gift_id,gift_item_id,gift_name,sender,receive,sender_user_id,receive_user_id,item_type,pic,coin,real_coin,quantity,sfc,region_sfc,rfc,region_rfc,create_at  from %s where create_at >= ? and create_at < ? and mod(gift_item_id, 50) = 0 ", "gift_items")
-		rows, err := db.Query(ssql, start, end)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+// 	db.Do(func(db *sql.DB) {
+// 		ssql := fmt.Sprintf("select gift_id,gift_item_id,gift_name,sender,receive,sender_user_id,receive_user_id,item_type,pic,coin,real_coin,quantity,sfc,region_sfc,rfc,region_rfc,create_at  from %s where create_at >= ? and create_at < ? and mod(gift_item_id, 50) = 0 ", "gift_items")
+// 		rows, err := db.Query(ssql, start, end)
+// 		if err != nil {
+// 			log.Println(err)
+// 			return
+// 		}
 
-		for rows.Next() {
-			item := &GiftItem{}
+// 		for rows.Next() {
+// 			item := &GiftItem{}
 
-			rows.Scan(
-				&item.GiftID,
-				&item.GiftItemID,
-				&item.Name,
-				&item.Sender,
-				&item.Receive,
-				&item.SenderUserID,
-				&item.ReceiveUserID,
-				&item.ItemType,
-				&item.Picture,
-				&item.Coin,
-				&item.RealCoin,
-				&item.Quantity,
-				&item.SFC,
-				&item.RegionSFC,
-				&item.RFC,
-				&item.RegionRFC,
-				&item.CreateAt,
-			)
-			result = append(result, item)
-			// log.Println(item.CreateAt)
-		}
-	})
+// 			rows.Scan(
+// 				&item.GiftID,
+// 				&item.GiftItemID,
+// 				&item.Name,
+// 				&item.Sender,
+// 				&item.Receive,
+// 				&item.SenderUserID,
+// 				&item.ReceiveUserID,
+// 				&item.ItemType,
+// 				&item.Picture,
+// 				&item.Coin,
+// 				&item.RealCoin,
+// 				&item.Quantity,
+// 				&item.SFC,
+// 				&item.RegionSFC,
+// 				&item.RFC,
+// 				&item.RegionRFC,
+// 				&item.CreateAt,
+// 			)
+// 			result = append(result, item)
+// 			// log.Println(item.CreateAt)
+// 		}
+// 	})
 
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].CreateAt.Before(result[j].CreateAt)
-	})
+// 	sort.Slice(result, func(i, j int) bool {
+// 		return result[i].CreateAt.Before(result[j].CreateAt)
+// 	})
 
-	return
-}
+// 	return
+// }
 
 func loadGiftItems() (result []*GiftItem) {
 	f, err := os.Open("./data.gob")
@@ -105,42 +101,42 @@ func loadGiftItems() (result []*GiftItem) {
 	return
 }
 
-func XTestDownload(t *testing.T) {
-	now := time.Now()
-	today := now.Truncate(time.Hour * 24)
-	items := QueryGiftItems(today.Add(-time.Hour*24*5), today)
+// func XTestDownload(t *testing.T) {
+// 	now := time.Now()
+// 	today := now.Truncate(time.Hour * 24)
+// 	items := QueryGiftItems(today.Add(-time.Hour*24*5), today)
 
-	// var items []*GiftItem
-	// for _, item := range items2 {
+// 	// var items []*GiftItem
+// 	// for _, item := range items2 {
 
-	// 	items = append(items, item)
+// 	// 	items = append(items, item)
 
-	// }
+// 	// }
 
-	f, err := os.OpenFile("./data.gob", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer f.Close()
-	var buf bytes.Buffer // Stand-in for a network connection
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(items)
-	if err != nil {
-		log.Panic(err)
-	}
-	log.Println(len(items), len(buf.Bytes()))
+// 	f, err := os.OpenFile("./data.gob", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
+// 	if err != nil {
+// 		log.Panic(err)
+// 	}
+// 	defer f.Close()
+// 	var buf bytes.Buffer // Stand-in for a network connection
+// 	enc := gob.NewEncoder(&buf)
+// 	err = enc.Encode(items)
+// 	if err != nil {
+// 		log.Panic(err)
+// 	}
+// 	log.Println(len(items), len(buf.Bytes()))
 
-	gz := gzip.NewWriter(f)
-	_, err = gz.Write(buf.Bytes())
-	if err != nil {
-		log.Panic(err)
-	}
+// 	gz := gzip.NewWriter(f)
+// 	_, err = gz.Write(buf.Bytes())
+// 	if err != nil {
+// 		log.Panic(err)
+// 	}
 
-	err = gz.Close()
-	if err != nil {
-		log.Panic(err)
-	}
-}
+// 	err = gz.Close()
+// 	if err != nil {
+// 		log.Panic(err)
+// 	}
+// }
 
 type Item struct {
 	Name      string
@@ -372,5 +368,10 @@ func Test3(t *testing.T) {
 
 // 测试@
 func Test4(t *testing.T) {
-
+	clsfy := NewWithMode(`region<RegionRFC>.country<RFC>.@Coin`)
+	items := loadGiftItems()
+	clsfy.PutSlice(items)
+	if len(clsfy.Keys()) == 0 {
+		t.Error("")
+	}
 }

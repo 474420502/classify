@@ -1,6 +1,3 @@
-region<Region>.[
-  country(Country).platform(Platform).@Value,
-  platform(Platform).country(Country).@
-]
+region<Region>.country(Country).platform(Platform).@Value
 
   

@@ -281,62 +281,93 @@ func Test1(t *testing.T) {
 	// c.debugPrint(0)
 }
 
-// func Test2(t *testing.T) {
+func Test2(t *testing.T) {
 
-// 	clsfy := New()
-// 	clsfy.Build(`region<RegionRFC>.country<RFC>.@Coin`)
+	clsfy := New()
+	clsfy.Build(`region<RegionRFC>.country<RFC>.@Coin`)
 
-// 	// items := loadGiftItemsJson()
+	// items := loadGiftItemsJson()
 
-// 	items := loadGiftItems()
+	items := loadGiftItems()
 
-// 	for _, item := range items {
-// 		clsfy.Put(item)
-// 	}
+	for _, item := range items {
+		clsfy.Put(item)
+	}
 
-// 	var getitems []*GiftItem
-// 	for _, region := range clsfy.Keys() {
-// 		for _, country := range clsfy.Keys(region) {
-// 			var gitems []*GiftItem
-// 			clsfy.Get(&gitems, region, country)
-// 			getitems = append(getitems, gitems...)
-// 		}
-// 	}
+	var getitems []*GiftItem
+	for _, region := range clsfy.Keys() {
+		for _, country := range clsfy.Keys(region) {
+			var gitems []*GiftItem
+			clsfy.Get(&gitems, region, country)
+			getitems = append(getitems, gitems...)
+		}
+	}
 
-// 	sort.Slice(items, func(i, j int) bool {
-// 		return items[i].GiftItemID > items[j].GiftItemID
-// 	})
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].GiftItemID > items[j].GiftItemID
+	})
 
-// 	sort.Slice(getitems, func(i, j int) bool {
-// 		return getitems[i].GiftItemID > getitems[j].GiftItemID
-// 	})
+	sort.Slice(getitems, func(i, j int) bool {
+		return getitems[i].GiftItemID > getitems[j].GiftItemID
+	})
 
-// 	if len(items) != len(getitems) {
-// 		t.Error("items.len != getitems.len")
-// 		return
-// 	}
+	if len(items) != len(getitems) {
+		t.Error("items.len != getitems.len")
+		return
+	}
 
-// 	for i, item := range items {
+	for i, item := range items {
 
-// 		if item.GiftItemID != getitems[i].GiftItemID {
-// 			t.Error("items != getitems", i)
-// 			return
-// 		}
-// 	}
-// }
+		if item.GiftItemID != getitems[i].GiftItemID {
+			t.Error("items != getitems", i)
+			return
+		}
+	}
+}
 
-// func Test3(t *testing.T) {
+func Test3(t *testing.T) {
 
-// 	clsfy := New()
-// 	clsfy.Build(`region<RegionRFC>.country<RFC>.@Coin`)
+	clsfy := New()
+	clsfy.Build(` region[1]. country[0].@Coin `,
+		func(value interface{}) interface{} {
+			return value.(*GiftItem).RFC
+		},
+		func(value interface{}) interface{} {
+			return value.(*GiftItem).RegionRFC
+		},
+	)
 
-// 	// items := loadGiftItemsJson()
+	// items := loadGiftItemsJson()
 
-// 	items := loadGiftItems()
+	items := loadGiftItems()
 
-// 	log.Println(clsfy.Categorys())
-// 	for _, item := range items {
-// 		clsfy.Put(item)
-// 	}
+	log.Println(clsfy.Categorys())
+	for _, item := range items {
+		clsfy.Put(item)
+	}
 
-// }
+	// var getitems []*GiftItem
+	for _, region := range clsfy.Keys() {
+		for _, country := range clsfy.Keys(region) {
+			var gitems []*GiftItem
+			clsfy.Get(&gitems, region, country)
+			// log.Println(region, country)
+			for _, item := range gitems {
+				// log.Printf("%#v", item)
+				if item.RegionRFC != region {
+					t.Errorf("Errro Region %s != %s", item.RegionRFC, region)
+				}
+
+				if item.RFC != country {
+					t.Errorf("Errro Country %s != %s", item.RFC, country)
+				}
+			}
+		}
+	}
+
+}
+
+// 测试@
+func Test4(t *testing.T) {
+
+}

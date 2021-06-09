@@ -84,10 +84,12 @@ type GiftItem struct {
 // }
 
 func loadGiftItems() (result []*GiftItem) {
+
 	f, err := os.Open("./data.gob")
 	if err != nil {
 		log.Panic(err)
 	}
+
 	reader, err := gzip.NewReader(f)
 	if err != nil {
 		log.Panic(err)
@@ -97,6 +99,30 @@ func loadGiftItems() (result []*GiftItem) {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	// var nresult []*GiftItem
+	// for i, item := range result {
+	// 	if i%2 == 0 {
+	// 		nresult = append(nresult, item)
+	// 	}
+	// }
+
+	// for n := 0; n < 4; n++ {
+	// 	var nnresult []*GiftItem
+	// 	for i, item := range nresult {
+	// 		if i%2 == 0 {
+	// 			nnresult = append(nnresult, item)
+	// 		}
+	// 	}
+	// 	nresult = nnresult
+	// }
+
+	// f2, _ := os.OpenFile("./data2.gob", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	// wr2 := gzip.NewWriter(f2)
+	// gob.NewEncoder(wr2).Encode(nresult)
+	// wr2.Close()
+	// f2.Close()
+	// log.Println(len(nresult))
 
 	return
 }
@@ -324,6 +350,7 @@ func Test2(t *testing.T) {
 func Test3(t *testing.T) {
 
 	clsfy := New()
+	// [1] 取handlers[1]的方法.
 	clsfy.Build(` region[1]. country[0].@ `,
 		func(value interface{}) interface{} {
 			return value.(*GiftItem).RFC
@@ -337,7 +364,7 @@ func Test3(t *testing.T) {
 
 	items := loadGiftItems()
 
-	// log.Println(clsfy.Categorys())
+	log.Println(clsfy.Categorys())
 	if clsfy.Categorys() != "region.country.@" {
 		t.Errorf("error output Categorys %#v", clsfy.Categorys())
 	}

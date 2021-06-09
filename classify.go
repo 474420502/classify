@@ -204,6 +204,7 @@ func (clsfy *Classify) Put(v interface{}) {
 }
 
 func (clsfy *Classify) PutSlice(items interface{}) {
+
 	if clsfy.Values == nil {
 		clsfy.Values = vbtkey.New(autoComapre)
 	}

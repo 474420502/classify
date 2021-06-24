@@ -34,6 +34,7 @@ func handlerbytes(item interface{}) []byte {
 	return buf.Bytes()
 }
 
+// NewStreamer CreateCountedHandler CountHandler Add 都必须要使用地址传入
 func NewStreamer(mode string, handlers ...CategoryHandler) *Streamer {
 	s := &Streamer{bytesdict: make(map[string]interface{})}
 	s.Build(mode, handlers...)
@@ -41,13 +42,6 @@ func NewStreamer(mode string, handlers ...CategoryHandler) *Streamer {
 }
 
 func (stream *Streamer) SetCreateCountedHandler(createHandler CreateCountedHandler) *Streamer {
-	test := reflect.ValueOf(createHandler(nil))
-	if test.Kind() == reflect.Ptr {
-		test = test.Elem()
-	}
-	if test.Kind() != reflect.Struct {
-		panic("countInitHandler must be struct")
-	}
 	stream.createHandler = createHandler
 	return stream
 }
@@ -65,25 +59,30 @@ func (stream *Streamer) AddCategory(handler CategoryHandler) *Streamer {
 }
 
 func (stream *Streamer) Add(item interface{}) {
-
 	var bkey []byte
 	for _, cg := range stream.categorys {
 		bkey = append(bkey, handlerbytes(cg.Handler(item))...)
 	}
-
+	var skey string = string(bkey)
 	var counted interface{}
 	var ok bool
 
-	if counted, ok = stream.bytesdict[string(bkey)]; !ok {
+	if counted, ok = stream.bytesdict[skey]; !ok {
 		counted = stream.createHandler(item)
+		// 必须地址传入 所以counted必须地址
+		stream.bytesdict[skey] = counted
+	} else {
+		// 必须地址传入
+		stream.count(counted, item)
 	}
+}
 
-	vcounted := reflect.ValueOf(counted)
-	if vcounted.Kind() != reflect.Ptr {
-		counted = vcounted.Addr().Interface()
+func (stream *Streamer) RangeItems(do func(item interface{}) bool) {
+	for _, v := range stream.bytesdict {
+		if !do(v) {
+			break
+		}
 	}
-
-	stream.bytesdict[string(bkey)] = counted
 }
 
 func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
@@ -153,7 +152,6 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 				panic(err)
 			}
 			stream.AddCategory(handlers[fidx])
-
 		default:
 			panic("?")
 		}

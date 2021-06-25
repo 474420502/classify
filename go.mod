@@ -2,4 +2,7 @@ module github.com/474420502/classify
 
 go 1.16
 
-require github.com/474420502/focus v0.13.3
+require (
+	github.com/474420502/focus v0.13.3
+	github.com/Pallinder/go-randomdata v1.1.0
+)

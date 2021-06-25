@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 )
@@ -77,9 +76,9 @@ func (stream *Streamer) Add(item interface{}) {
 	}
 }
 
-func (stream *Streamer) RangeItems(do func(item interface{}) bool) {
-	for _, v := range stream.bytesdict {
-		if !do(v) {
+func (stream *Streamer) RangeItems(do func(key string, item interface{}) bool) {
+	for key, v := range stream.bytesdict {
+		if !do(key, v) {
 			break
 		}
 	}
@@ -137,7 +136,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 
 		switch methodType {
 		case 1:
-			log.Println(string(cmethod))
+			// log.Println(string(cmethod))
 			stream.AddCategory(func(value interface{}) interface{} {
 				v := reflect.ValueOf(value)
 				if v.Type().Kind() == reflect.Ptr {

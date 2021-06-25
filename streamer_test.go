@@ -55,9 +55,4 @@ func TestMode(t *testing.T) {
 		})
 	}
 
-	streamer.RangeItems(func(key string, item interface{}) bool {
-		t.Error(item.(*TestStruct).Name, item.(*TestStruct).Type)
-		return true
-	})
-
 }

@@ -25,7 +25,7 @@ type Classify struct {
 	Values    *vbtkey.Tree
 }
 
-type CategoryHandler func(value interface{}) interface{}
+type CategoryHandler func(item interface{}) interface{}
 
 // hCategory 类别
 type hCategory struct {

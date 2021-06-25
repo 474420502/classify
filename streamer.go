@@ -76,9 +76,9 @@ func (stream *Streamer) Add(item interface{}) {
 	}
 }
 
-func (stream *Streamer) RangeItems(do func(key string, item interface{}) bool) {
-	for key, v := range stream.bytesdict {
-		if !do(key, v) {
+func (stream *Streamer) RangeItems(do func(item interface{}) bool) {
+	for _, v := range stream.bytesdict {
+		if !do(v) {
 			break
 		}
 	}

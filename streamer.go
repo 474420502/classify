@@ -67,7 +67,12 @@ func (stream *Streamer) Add(item interface{}) {
 	var ok bool
 
 	if counted, ok = stream.bytesdict[skey]; !ok {
-		counted = stream.createHandler(item)
+		if stream.createHandler != nil {
+			counted = stream.createHandler(item)
+		} else {
+			counted = item
+		}
+
 		// 必须地址传入 所以counted必须地址
 		stream.bytesdict[skey] = counted
 	} else {

@@ -2,17 +2,19 @@ package classify
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
+
+	"github.com/474420502/structure/search/treelist"
 )
 
-// Streamer 流计算
+// Streamer 流计算. 用于分段时间聚合, 分类聚合...等
 type Streamer struct {
-	categorys []*sCategory
-	bytesdict map[string]interface{}
-
+	categorys     []*sCategory
+	bytesdict     *treelist.Tree
 	count         CountHandler
 	createHandler CreateCountedHandler
 }
@@ -21,7 +23,7 @@ type sCategory struct {
 	Handler CategoryHandler
 }
 
-// 1 是字段( 2 是方法< 3 结尾收集@ 4 是拼接 +
+// 1 是字段( 2 是方法< 3 结尾收集@
 type MethodType int
 
 const (
@@ -34,32 +36,61 @@ const (
 type CountHandler func(counted interface{}, item interface{})
 type CreateCountedHandler func(item interface{}) interface{}
 
+var timeKind = reflect.TypeOf(time.Time{}).Kind()
+
 func handlerbytes(item interface{}) []byte {
 	var buf bytes.Buffer
-	err := gob.NewEncoder(&buf).Encode(item)
-	if err != nil {
-		panic(err)
+
+	fi := reflect.ValueOf(item)
+	if fi.Kind() == reflect.Ptr {
+		fi = fi.Elem()
 	}
+
+	switch fi.Kind() {
+	case reflect.String:
+		err := binary.Write(&buf, binary.BigEndian, []byte(fi.Interface().(string)))
+		if err != nil {
+			panic(err)
+		}
+	case timeKind:
+		data, err := fi.Interface().(time.Time).MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(&buf, binary.BigEndian, data)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		err := binary.Write(&buf, binary.BigEndian, fi.Interface())
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return buf.Bytes()
 }
 
 // NewStreamer CreateCountedHandler CountHandler Add 都必须要使用地址传入
 func NewStreamer(mode string, handlers ...CategoryHandler) *Streamer {
-	s := &Streamer{bytesdict: make(map[string]interface{})}
+	s := &Streamer{bytesdict: treelist.New()}
 	s.Build(mode, handlers...)
 	return s
 }
 
+// SetCreateCountedHandler 设置被计算生成的对象 通过所有Add item汇聚成handler 返回的结果
 func (stream *Streamer) SetCreateCountedHandler(createHandler CreateCountedHandler) *Streamer {
 	stream.createHandler = createHandler
 	return stream
 }
 
+// SetCountHandler  设置计算过程
 func (stream *Streamer) SetCountHandler(countHandler CountHandler) *Streamer {
 	stream.count = countHandler
 	return stream
 }
 
+// AddCategory 添加类别的处理方法
 func (stream *Streamer) AddCategory(handler CategoryHandler) *Streamer {
 	stream.categorys = append(stream.categorys, &sCategory{
 		Handler: handler,
@@ -67,16 +98,18 @@ func (stream *Streamer) AddCategory(handler CategoryHandler) *Streamer {
 	return stream
 }
 
+// Add 添加到处理队列处理. 汇聚成counted. 通过 Seek RangeCounted获取结果
 func (stream *Streamer) Add(item interface{}) {
-	var bkey []byte
+	var skey []byte
 	for _, cg := range stream.categorys {
-		bkey = append(bkey, handlerbytes(cg.Handler(item))...)
+		skey = append(skey, handlerbytes(cg.Handler(item))...)
 	}
-	var skey string = string(bkey)
+
+	// var skey = bkey
 	var counted interface{}
 	var ok bool
 
-	if counted, ok = stream.bytesdict[skey]; !ok {
+	if counted, ok = stream.bytesdict.Get(skey); !ok {
 		if stream.createHandler != nil {
 			counted = stream.createHandler(item)
 		} else {
@@ -84,19 +117,60 @@ func (stream *Streamer) Add(item interface{}) {
 		}
 
 		// 必须地址传入 所以counted必须地址
-		stream.bytesdict[skey] = counted
+		// stream.bytesdict[skey] = counted
+		stream.bytesdict.Put(skey, counted)
 	} else {
 		// 必须地址传入
 		stream.count(counted, item)
 	}
 }
 
-func (stream *Streamer) RangeItems(do func(item interface{}) bool) {
-	for _, v := range stream.bytesdict {
-		if !do(v) {
+// getEncodeKey 序列化 item的所有key
+func (stream *Streamer) getEncodeKey(item interface{}) []byte {
+	var skey []byte
+	for _, cg := range stream.categorys {
+		skey = append(skey, handlerbytes(cg.Handler(item))...)
+	}
+	return skey
+}
+
+// Seek 定位到 item 字节序列后的点. 然后从小到大遍历
+// [1 2 3] 参数为2 则 第一个item为2
+// [1 3] 参数为2 则 第一个item为3
+func (stream *Streamer) Seek(item interface{}, iterfunc func(counted interface{}) bool) {
+	skey := stream.getEncodeKey(item)
+	iter := stream.bytesdict.Iterator()
+	iter.Seek(skey)
+
+	for iter.Valid() {
+		if !iterfunc(iter.Value()) {
 			break
 		}
+		iter.Next()
 	}
+}
+
+// Seek 定位到 item 字节序列后的点. 然后从大到小遍历
+// [1 2 3] 参数为2 则 第一个item为2
+// [1 3] 参数为2 则 第一个item为1.
+func (stream *Streamer) SeekReverse(item interface{}, iterfunc func(counted interface{}) bool) {
+	skey := stream.getEncodeKey(item)
+	iter := stream.bytesdict.Iterator()
+	iter.SeekForPrev(skey)
+
+	for iter.Valid() {
+		if !iterfunc(iter.Value()) {
+			break
+		}
+		iter.Prev()
+	}
+}
+
+// RangeCounted 从小到大遍历 counted 对象
+func (stream *Streamer) RangeCounted(do func(counted interface{}) bool) {
+	stream.bytesdict.Traverse(func(s *treelist.Slice) bool {
+		return do(s.Value)
+	})
 }
 
 func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
@@ -150,7 +224,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 
 		switch mt {
 		case MT_FIELD:
-
+			// 添加处理字段的类别方法
 			stream.AddCategory(func(value interface{}) interface{} {
 				v := reflect.ValueOf(value)
 				if v.Type().Kind() == reflect.Ptr {
@@ -159,7 +233,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 				return v.FieldByName(string(cmethod)).Interface()
 			})
 		case MT_METHOD:
-
+			// 通过自定义函数处理字段返回的方法
 			fidx, err := strconv.Atoi(string(cmethod))
 			if err != nil {
 				panic(err)

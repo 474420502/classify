@@ -25,6 +25,7 @@ type Classify struct {
 	Values    *vbtkey.Tree
 }
 
+// CategoryHandler 处理结构体字段的返回值
 type CategoryHandler func(item interface{}) interface{}
 
 // hCategory 类别

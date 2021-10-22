@@ -21,6 +21,16 @@ type sCategory struct {
 	Handler CategoryHandler
 }
 
+// 1 是字段( 2 是方法< 3 结尾收集@ 4 是拼接 +
+type MethodType int
+
+const (
+	MT_UNKNOWN MethodType = 0 // 0 未知
+	MT_FIELD   MethodType = 1 // 1 字段 KEY a-zA-Z
+	MT_METHOD  MethodType = 2 // 2 方法 函数 <>
+	MT_COLLECT MethodType = 3 // 3 收集操作 @
+)
+
 type CountHandler func(counted interface{}, item interface{})
 type CreateCountedHandler func(item interface{}) interface{}
 
@@ -96,7 +106,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 
 		// var cname []byte
 		var cmethod []byte
-		var methodType int = 0 // 1 是字段( 2 是方法< 3 结尾收集@
+		var mt MethodType = 0 // 1 是字段( 2 是方法< 3 结尾收集@ 4 是拼接 +
 
 	CNAME:
 		for ; i < len(token); i++ {
@@ -104,15 +114,14 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 			switch c {
 			case '@':
 				panic("@ 不存在该操作符")
-				// methodType = 3
-				// i++
-				// break CNAME
+			case '+':
+				break CNAME
 			case '[':
-				methodType = 2
+				mt = MT_METHOD
 				i++
 				break CNAME
 			case '<':
-				methodType = 1
+				mt = MT_FIELD
 				i++
 				break CNAME
 			case ' ':
@@ -122,7 +131,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 			}
 		}
 
-		if methodType == 0 {
+		if mt == MT_UNKNOWN {
 			panic(fmt.Errorf("语法错误: %s", mode))
 		}
 
@@ -139,9 +148,9 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 			}
 		}
 
-		switch methodType {
-		case 1:
-			// log.Println(string(cmethod))
+		switch mt {
+		case MT_FIELD:
+
 			stream.AddCategory(func(value interface{}) interface{} {
 				v := reflect.ValueOf(value)
 				if v.Type().Kind() == reflect.Ptr {
@@ -149,15 +158,15 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 				}
 				return v.FieldByName(string(cmethod)).Interface()
 			})
-		case 2:
-			// log.Println(string(cname), string(cmethod))
+		case MT_METHOD:
+
 			fidx, err := strconv.Atoi(string(cmethod))
 			if err != nil {
 				panic(err)
 			}
 			stream.AddCategory(handlers[fidx])
 		default:
-			panic("?")
+			panic(fmt.Errorf("MethodType %d is error", mt))
 		}
 
 	}

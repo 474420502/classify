@@ -25,7 +25,8 @@ type Classify struct {
 	Values    *vbtkey.Tree
 }
 
-type CategoryHandler func(value interface{}) interface{}
+// CategoryHandler 处理结构体字段的返回值
+type CategoryHandler func(item interface{}) interface{}
 
 // hCategory 类别
 type hCategory struct {
@@ -204,6 +205,7 @@ func (clsfy *Classify) Put(v interface{}) {
 }
 
 func (clsfy *Classify) PutSlice(items interface{}) {
+
 	if clsfy.Values == nil {
 		clsfy.Values = vbtkey.New(autoComapre)
 	}

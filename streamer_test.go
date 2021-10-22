@@ -154,7 +154,7 @@ func TestSortRangeMethod(t *testing.T) {
 	random.Use(random.DataIdidomChina)
 
 	now := time.Unix(1634895792, 0)
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 240; i++ {
 		item := &TSTime{
 			CreateAt: now,
 			Name:     rand.Extend().FullName(),
@@ -179,6 +179,14 @@ func TestSortRangeMethod(t *testing.T) {
 		i := item.(*TSTime)
 		if i.CreateAt.Before(now) {
 			panic("time seek error")
+		}
+		return true
+	})
+
+	streamer.RangeCounted(func(counted interface{}) bool {
+		i := counted.(*TSTime)
+		if i.CreateAt.Second() != 0 {
+			panic("i.CreateAt.Second() != 0")
 		}
 		return true
 	})

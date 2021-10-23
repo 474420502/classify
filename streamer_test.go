@@ -1,11 +1,11 @@
 package classify
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/474420502/random"
-	"github.com/Pallinder/go-randomdata"
 )
 
 type TestStruct struct {
@@ -32,27 +32,27 @@ func TestMode(t *testing.T) {
 		c.Value += item.(*TestStruct).Value
 	})
 
-	end := 10
+	end := int32(10)
 	for i := 0; i < 10000; i++ {
 
 		streamer.Add(&TestStruct{
 			Name:  "day",
 			Label: "xi",
-			Type:  int32(randomdata.Number(0, end)),
+			Type:  int32(rand.Int31n(end)),
 			Value: 1,
 		})
 
 		streamer.Add(&TestStruct{
 			Name:  "month",
 			Label: "ha",
-			Type:  int32(randomdata.Number(0, end)),
+			Type:  int32(rand.Int31n(end)),
 			Value: 1,
 		})
 
 		streamer.Add(&TestStruct{
 			Name:  "day",
 			Label: "xi",
-			Type:  int32(randomdata.Number(0, end)),
+			Type:  int32(rand.Int31n(end)),
 			Value: 2,
 		})
 	}

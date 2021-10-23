@@ -13,30 +13,11 @@ import (
 
 // Streamer 流计算. 用于分段时间聚合, 分类聚合...等
 type Streamer struct {
-	categorys     []*sCategory
+	categorys     []CategoryHandler
 	bytesdict     *treelist.Tree
 	count         CountHandler
 	createHandler CreateCountedHandler
 }
-
-type sCategory struct {
-	Handler CategoryHandler
-}
-
-// 1 是字段( 2 是方法< 3 结尾收集@
-type MethodType int
-
-const (
-	MT_UNKNOWN MethodType = 0 // 0 未知
-	MT_FIELD   MethodType = 1 // 1 字段 KEY a-zA-Z
-	MT_METHOD  MethodType = 2 // 2 方法 函数 <>
-	MT_COLLECT MethodType = 3 // 3 收集操作 @
-)
-
-type CountHandler func(counted interface{}, item interface{})
-type CreateCountedHandler func(item interface{}) interface{}
-
-var timeKind = reflect.TypeOf(time.Time{}).Kind()
 
 func handlerbytes(item interface{}) []byte {
 	var buf bytes.Buffer
@@ -92,17 +73,15 @@ func (stream *Streamer) SetCountHandler(countHandler CountHandler) *Streamer {
 
 // AddCategory 添加类别的处理方法
 func (stream *Streamer) AddCategory(handler CategoryHandler) *Streamer {
-	stream.categorys = append(stream.categorys, &sCategory{
-		Handler: handler,
-	})
+	stream.categorys = append(stream.categorys, handler)
 	return stream
 }
 
 // Add 添加到处理队列处理. 汇聚成counted. 通过 Seek RangeCounted获取结果
 func (stream *Streamer) Add(item interface{}) {
 	var skey []byte
-	for _, cg := range stream.categorys {
-		skey = append(skey, handlerbytes(cg.Handler(item))...)
+	for _, handler := range stream.categorys {
+		skey = append(skey, handlerbytes(handler(item))...)
 	}
 
 	// var skey = bkey
@@ -128,8 +107,8 @@ func (stream *Streamer) Add(item interface{}) {
 // getEncodeKey 序列化 item的所有key
 func (stream *Streamer) getEncodeKey(item interface{}) []byte {
 	var skey []byte
-	for _, cg := range stream.categorys {
-		skey = append(skey, handlerbytes(cg.Handler(item))...)
+	for _, handler := range stream.categorys {
+		skey = append(skey, handlerbytes(handler(item))...)
 	}
 	return skey
 }

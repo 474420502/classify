@@ -43,6 +43,7 @@ func (stream *ClassifyEx) Add(item interface{}) {
 func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
 	// var skey []byte
 	var skey = bytes.NewBuffer(nil)
+
 	for _, handler := range stream.categorys {
 		skey.Write(handlerbytes(handler(item)))
 	}
@@ -57,8 +58,8 @@ func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
 // Seek 定位到 item 字节序列后的点. 然后从小到大遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为3
-func (stream *ClassifyEx) Seek(item interface{}, iterfunc func(counted interface{}) bool) {
-	skey := stream.getEncodeKey(item)
+func (stream *ClassifyEx) Seek(key interface{}, iterfunc func(item interface{}) bool) {
+	skey := stream.getEncodeKey(key)
 	iter := stream.bytesdict.Iterator()
 	iter.Seek(skey)
 
@@ -73,7 +74,7 @@ func (stream *ClassifyEx) Seek(item interface{}, iterfunc func(counted interface
 // Seek 定位到 item 字节序列后的点. 然后从大到小遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为1.
-func (stream *ClassifyEx) SeekReverse(item interface{}, iterfunc func(counted interface{}) bool) {
+func (stream *ClassifyEx) SeekReverse(item interface{}, iterfunc func(item interface{}) bool) {
 	skey := stream.getEncodeKey(item)
 	iter := stream.bytesdict.Iterator()
 	iter.SeekForPrev(skey)

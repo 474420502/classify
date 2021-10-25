@@ -113,13 +113,13 @@ func (stream *Streamer) getEncodeKey(item interface{}) []byte {
 	return skey
 }
 
-// Seek 定位到 item 字节序列后的点. 然后从小到大遍历
+// SeekGE 定位到 item 字节序列后的点. 然后从小到大遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为3
-func (stream *Streamer) Seek(item interface{}, iterfunc func(counted interface{}) bool) {
+func (stream *Streamer) SeekGE(item interface{}, iterfunc func(counted interface{}) bool) {
 	skey := stream.getEncodeKey(item)
 	iter := stream.bytesdict.Iterator()
-	iter.Seek(skey)
+	iter.SeekGE(skey)
 
 	for iter.Valid() {
 		if !iterfunc(iter.Value()) {
@@ -132,10 +132,10 @@ func (stream *Streamer) Seek(item interface{}, iterfunc func(counted interface{}
 // Seek 定位到 item 字节序列后的点. 然后从大到小遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为1.
-func (stream *Streamer) SeekReverse(item interface{}, iterfunc func(counted interface{}) bool) {
+func (stream *Streamer) SeekGEReverse(item interface{}, iterfunc func(counted interface{}) bool) {
 	skey := stream.getEncodeKey(item)
 	iter := stream.bytesdict.Iterator()
-	iter.SeekForPrev(skey)
+	iter.SeekLE(skey)
 
 	for iter.Valid() {
 		if !iterfunc(iter.Value()) {

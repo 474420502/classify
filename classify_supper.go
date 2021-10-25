@@ -30,7 +30,7 @@ func (stream *ClassifyEx) AddCategory(handler CategoryHandler) *ClassifyEx {
 	return stream
 }
 
-// Add 添加到处理队列处理. 汇聚成counted. 通过 Seek RangeCounted获取结果
+// Add 添加到处理队列处理.  通过 Seek RangeItem获取结果
 func (stream *ClassifyEx) Add(item interface{}) {
 	var skey = stream.getEncodeKey(item)
 
@@ -55,14 +55,13 @@ func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
 	return skey.Bytes()
 }
 
-// Seek 定位到 item 字节序列后的点. 然后从小到大遍历
+// SeekGE 定位到 item 字节序列后的点. 然后从小到大遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为3
-func (stream *ClassifyEx) Seek(key interface{}, iterfunc func(item interface{}) bool) {
+func (stream *ClassifyEx) SeekGE(key interface{}, iterfunc func(item interface{}) bool) {
 	skey := stream.getEncodeKey(key)
 	iter := stream.bytesdict.Iterator()
-	iter.Seek(skey)
-
+	iter.SeekGE(skey)
 	for iter.Valid() {
 		if !iterfunc(iter.Value()) {
 			break
@@ -71,13 +70,13 @@ func (stream *ClassifyEx) Seek(key interface{}, iterfunc func(item interface{}) 
 	}
 }
 
-// Seek 定位到 item 字节序列后的点. 然后从大到小遍历
+// SeekGEReverse 定位到 item 字节序列后的点. 然后从大到小遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为1.
-func (stream *ClassifyEx) SeekReverse(item interface{}, iterfunc func(item interface{}) bool) {
+func (stream *ClassifyEx) SeekGEReverse(item interface{}, iterfunc func(item interface{}) bool) {
 	skey := stream.getEncodeKey(item)
 	iter := stream.bytesdict.Iterator()
-	iter.SeekForPrev(skey)
+	iter.SeekLE(skey)
 
 	for iter.Valid() {
 		if !iterfunc(iter.Value()) {
@@ -87,8 +86,8 @@ func (stream *ClassifyEx) SeekReverse(item interface{}, iterfunc func(item inter
 	}
 }
 
-// RangeItem 从小到大遍历 counted 对象
-func (stream *ClassifyEx) RangeItem(do func(item interface{}) bool) {
+// RangeItems 从小到大遍历 item 对象
+func (stream *ClassifyEx) RangeItems(do func(item interface{}) bool) {
 	stream.bytesdict.Traverse(func(s *treelist.Slice) bool {
 		return do(s.Value)
 	})

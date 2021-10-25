@@ -97,7 +97,7 @@ func TestSortRange(t *testing.T) {
 	// 	/home/eson/workspace/classfiy/streamer_test.go:97: &{黄镇旨 蛮烟瘴雨 33 1350982193}
 	// /home/eson/workspace/classfiy/streamer_test.go:97: &{齐因泽 街头巷口 44 466969591}
 
-	streamer.Seek(TestStruct{Type: 70}, func(item interface{}) bool {
+	streamer.SeekGE(TestStruct{Type: 70}, func(item interface{}) bool {
 		i := item.(*TestStruct)
 		if i.Type < 70 {
 			t.Error("Seek error")
@@ -106,7 +106,7 @@ func TestSortRange(t *testing.T) {
 		return true
 	})
 
-	streamer.SeekReverse(TestStruct{Type: 70}, func(item interface{}) bool {
+	streamer.SeekGEReverse(TestStruct{Type: 70}, func(item interface{}) bool {
 		i := item.(*TestStruct)
 		if i.Type > 70 {
 			t.Error("Seek error")
@@ -167,7 +167,7 @@ func TestSortRangeMethod(t *testing.T) {
 	}
 
 	now = time.Unix(1634895792, 0).Add(time.Hour * 5).Truncate(time.Hour)
-	streamer.Seek(&TSTime{CreateAt: now}, func(item interface{}) bool {
+	streamer.SeekGE(&TSTime{CreateAt: now}, func(item interface{}) bool {
 		i := item.(*TSTime)
 		if i.CreateAt.Before(now) {
 			panic("time seek error")
@@ -175,7 +175,7 @@ func TestSortRangeMethod(t *testing.T) {
 		return true
 	})
 
-	streamer.SeekReverse(&TSTime{Type: 70}, func(item interface{}) bool {
+	streamer.SeekGEReverse(&TSTime{Type: 70}, func(item interface{}) bool {
 		i := item.(*TSTime)
 		if i.CreateAt.Before(now) {
 			panic("time seek error")

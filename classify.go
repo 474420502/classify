@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	indextree "github.com/474420502/structure/tree/itree"
+	treequeue "github.com/474420502/structure/queue/priority"
 )
 
 // kingTime 时间
@@ -22,7 +22,7 @@ var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{}
 // 分类
 type Classify struct {
 	categorys []*hCategory
-	Values    *indextree.Tree
+	Values    *treequeue.Queue
 }
 
 // CategoryHandler 处理结构体字段的返回值
@@ -175,22 +175,22 @@ func (clsfy *Classify) CollectCategory(handler CategoryHandler) {
 }
 
 func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
-	var values *indextree.Tree = clsfy.Values
+	var values *treequeue.Queue = clsfy.Values
 	// var category *Category
 	if len(paths) >= len(clsfy.categorys)-1 {
 		panic(fmt.Sprintf("categorys len is %d only: %#v", len(clsfy.categorys)-1, clsfy.Categorys()))
 	}
 	for _, p := range paths {
 		// category = clsfy.Categorys[i]
-		if child, ok := values.Get(p); ok {
-			values = child.(*indextree.Tree)
+		if child := values.Get(p); child != nil {
+			values = child.Value().(*treequeue.Queue)
 		} else {
 			panic(fmt.Errorf("no key %v", p))
 		}
 	}
 
-	values.Traverse(func(k, v interface{}) bool {
-		result = append(result, k)
+	values.Traverse(func(s *treequeue.Slice) bool {
+		result = append(result, s.Key())
 		return true
 	})
 
@@ -199,7 +199,7 @@ func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
 
 func (clsfy *Classify) Put(v interface{}) {
 	if clsfy.Values == nil {
-		clsfy.Values = indextree.New(autoComapre)
+		clsfy.Values = treequeue.New(autoComapre)
 	}
 	put(clsfy.categorys, 0, clsfy.Values, v)
 }
@@ -207,7 +207,7 @@ func (clsfy *Classify) Put(v interface{}) {
 func (clsfy *Classify) PutSlice(items interface{}) {
 
 	if clsfy.Values == nil {
-		clsfy.Values = indextree.New(autoComapre)
+		clsfy.Values = treequeue.New(autoComapre)
 	}
 	vitems := reflect.ValueOf(items)
 	if vitems.Type().Kind() != reflect.Slice {
@@ -219,20 +219,20 @@ func (clsfy *Classify) PutSlice(items interface{}) {
 
 }
 
-func put(categorys []*hCategory, cidx int, Values *indextree.Tree, v interface{}) {
+func put(categorys []*hCategory, cidx int, Values *treequeue.Queue, v interface{}) {
 	cate := categorys[cidx]
 	if cate.IsCollect {
-		Values.Set(cate.Handler(v), v)
+		Values.Put(cate.Handler(v), v)
 		return
 	} else {
 		// 判断Values是否存在
-		var NextValues *indextree.Tree
+		var NextValues *treequeue.Queue
 		key := cate.Handler(v)
-		if vs, ok := Values.Get(key); ok {
-			NextValues = vs.(*indextree.Tree)
+		if vs := Values.Get(key); vs != nil {
+			NextValues = vs.Value().(*treequeue.Queue)
 		} else {
-			NextValues = indextree.New(autoComapre)
-			Values.Set(key, NextValues)
+			NextValues = treequeue.New(autoComapre)
+			Values.Put(key, NextValues)
 		}
 		put(categorys, cidx+1, NextValues, v)
 	}
@@ -240,7 +240,7 @@ func put(categorys []*hCategory, cidx int, Values *indextree.Tree, v interface{}
 
 func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 
-	var values *indextree.Tree = clsfy.Values
+	var values *treequeue.Queue = clsfy.Values
 	if len(vPaths) >= len(clsfy.categorys) {
 		panic(fmt.Sprintf("values keys deepth is %d only: %#v", len(clsfy.categorys), clsfy.Categorys()))
 	}
@@ -258,22 +258,22 @@ func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 	for ; cidx < len(vPaths); cidx++ {
 		vp := vPaths[cidx]
 
-		if child, ok := values.Get(vp); ok {
-			values = child.(*indextree.Tree)
+		if child := values.Get(vp); child != nil {
+			values = child.Value().(*treequeue.Queue)
 		}
 	}
 
-	var getValues func(cidx int, values *indextree.Tree)
-	getValues = func(cidx int, values *indextree.Tree) {
+	var getValues func(cidx int, values *treequeue.Queue)
+	getValues = func(cidx int, values *treequeue.Queue) {
 		category := clsfy.categorys[cidx]
 		if category.IsCollect {
-			values.Traverse(func(k, v interface{}) bool {
-				result = reflect.Append(result, reflect.ValueOf(v))
+			values.Traverse(func(s *treequeue.Slice) bool {
+				result = reflect.Append(result, reflect.ValueOf(s.Value()))
 				return true
 			})
 		} else {
-			values.Traverse(func(k, v interface{}) bool {
-				getValues(cidx+1, v.(*indextree.Tree))
+			values.Traverse(func(s *treequeue.Slice) bool {
+				getValues(cidx+1, s.Value().(*treequeue.Queue))
 				return true
 			})
 		}

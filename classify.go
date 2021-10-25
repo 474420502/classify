@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/474420502/focus/tree/vbtkey"
+	indextree "github.com/474420502/structure/tree/itree"
 )
 
 // kingTime 时间
@@ -22,7 +22,7 @@ var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{}
 // 分类
 type Classify struct {
 	categorys []*hCategory
-	Values    *vbtkey.Tree
+	Values    *indextree.Tree
 }
 
 // CategoryHandler 处理结构体字段的返回值
@@ -175,7 +175,7 @@ func (clsfy *Classify) CollectCategory(handler CategoryHandler) {
 }
 
 func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
-	var values *vbtkey.Tree = clsfy.Values
+	var values *indextree.Tree = clsfy.Values
 	// var category *Category
 	if len(paths) >= len(clsfy.categorys)-1 {
 		panic(fmt.Sprintf("categorys len is %d only: %#v", len(clsfy.categorys)-1, clsfy.Categorys()))
@@ -183,13 +183,13 @@ func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
 	for _, p := range paths {
 		// category = clsfy.Categorys[i]
 		if child, ok := values.Get(p); ok {
-			values = child.(*vbtkey.Tree)
+			values = child.(*indextree.Tree)
 		} else {
 			panic(fmt.Errorf("no key %v", p))
 		}
 	}
 
-	values.Traversal(func(k, v interface{}) bool {
+	values.Traverse(func(k, v interface{}) bool {
 		result = append(result, k)
 		return true
 	})
@@ -199,7 +199,7 @@ func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
 
 func (clsfy *Classify) Put(v interface{}) {
 	if clsfy.Values == nil {
-		clsfy.Values = vbtkey.New(autoComapre)
+		clsfy.Values = indextree.New(autoComapre)
 	}
 	put(clsfy.categorys, 0, clsfy.Values, v)
 }
@@ -207,7 +207,7 @@ func (clsfy *Classify) Put(v interface{}) {
 func (clsfy *Classify) PutSlice(items interface{}) {
 
 	if clsfy.Values == nil {
-		clsfy.Values = vbtkey.New(autoComapre)
+		clsfy.Values = indextree.New(autoComapre)
 	}
 	vitems := reflect.ValueOf(items)
 	if vitems.Type().Kind() != reflect.Slice {
@@ -219,20 +219,20 @@ func (clsfy *Classify) PutSlice(items interface{}) {
 
 }
 
-func put(categorys []*hCategory, cidx int, Values *vbtkey.Tree, v interface{}) {
+func put(categorys []*hCategory, cidx int, Values *indextree.Tree, v interface{}) {
 	cate := categorys[cidx]
 	if cate.IsCollect {
-		Values.Put(cate.Handler(v), v)
+		Values.Set(cate.Handler(v), v)
 		return
 	} else {
 		// 判断Values是否存在
-		var NextValues *vbtkey.Tree
+		var NextValues *indextree.Tree
 		key := cate.Handler(v)
 		if vs, ok := Values.Get(key); ok {
-			NextValues = vs.(*vbtkey.Tree)
+			NextValues = vs.(*indextree.Tree)
 		} else {
-			NextValues = vbtkey.New(autoComapre)
-			Values.Put(key, NextValues)
+			NextValues = indextree.New(autoComapre)
+			Values.Set(key, NextValues)
 		}
 		put(categorys, cidx+1, NextValues, v)
 	}
@@ -240,7 +240,7 @@ func put(categorys []*hCategory, cidx int, Values *vbtkey.Tree, v interface{}) {
 
 func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 
-	var values *vbtkey.Tree = clsfy.Values
+	var values *indextree.Tree = clsfy.Values
 	if len(vPaths) >= len(clsfy.categorys) {
 		panic(fmt.Sprintf("values keys deepth is %d only: %#v", len(clsfy.categorys), clsfy.Categorys()))
 	}
@@ -259,21 +259,21 @@ func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 		vp := vPaths[cidx]
 
 		if child, ok := values.Get(vp); ok {
-			values = child.(*vbtkey.Tree)
+			values = child.(*indextree.Tree)
 		}
 	}
 
-	var getValues func(cidx int, values *vbtkey.Tree)
-	getValues = func(cidx int, values *vbtkey.Tree) {
+	var getValues func(cidx int, values *indextree.Tree)
+	getValues = func(cidx int, values *indextree.Tree) {
 		category := clsfy.categorys[cidx]
 		if category.IsCollect {
-			values.Traversal(func(k, v interface{}) bool {
+			values.Traverse(func(k, v interface{}) bool {
 				result = reflect.Append(result, reflect.ValueOf(v))
 				return true
 			})
 		} else {
-			values.Traversal(func(k, v interface{}) bool {
-				getValues(cidx+1, v.(*vbtkey.Tree))
+			values.Traverse(func(k, v interface{}) bool {
+				getValues(cidx+1, v.(*indextree.Tree))
 				return true
 			})
 		}

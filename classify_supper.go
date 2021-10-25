@@ -12,9 +12,10 @@ import (
 )
 
 type ClassifyEx struct {
-	categorys   []CategoryHandler
-	bytesdict   *treelist.Tree
-	uniqueCount uint64
+	categorys      []CategoryHandler
+	categoryfields []string // 类型名字列表
+	bytesdict      *treelist.Tree
+	uniqueCount    uint64
 }
 
 // NewClassifyEx CreateCountedHandler CountHandler Add 都必须要使用地址传入
@@ -30,8 +31,8 @@ func (stream *ClassifyEx) AddCategory(handler CategoryHandler) *ClassifyEx {
 	return stream
 }
 
-// Add 添加到处理队列处理.  通过 Seek RangeItem获取结果
-func (stream *ClassifyEx) Add(item interface{}) {
+// Put 添加到处理队列处理.  通过 Seek RangeItem获取结果
+func (stream *ClassifyEx) Put(item interface{}) {
 	var skey = stream.getEncodeKey(item)
 
 	if !stream.bytesdict.Put(skey, item) {
@@ -55,42 +56,52 @@ func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
 	return skey.Bytes()
 }
 
-// SeekGE 定位到 item 字节序列后的点. 然后从小到大遍历
+// SeekGE 定位到 item字段 字节序列后的点(类似前缀搜索). 然后从小到大遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为3
-func (stream *ClassifyEx) SeekGE(key interface{}, iterfunc func(item interface{}) bool) {
+func (stream *ClassifyEx) SeekGE(key interface{}, iterfunc func(iter *Iterator) bool) {
 	skey := stream.getEncodeKey(key)
-	iter := stream.bytesdict.Iterator()
-	iter.SeekGE(skey)
-	for iter.Valid() {
-		if !iterfunc(iter.Value()) {
+	siter := stream.bytesdict.Iterator()
+	siter.SeekGE(skey)
+	iter := &Iterator{mark: siter.Value()}
+	for siter.Valid() {
+		iter.cur = siter.Value()
+		if !iterfunc(iter) {
 			break
 		}
-		iter.Next()
+		siter.Next()
 	}
 }
 
-// SeekGEReverse 定位到 item 字节序列后的点. 然后从大到小遍历
+// SeekGEReverse 定位到 item 字节序列后的点(类似前缀搜索). 然后从大到小遍历
 // [1 2 3] 参数为2 则 第一个item为2
 // [1 3] 参数为2 则 第一个item为1.
-func (stream *ClassifyEx) SeekGEReverse(item interface{}, iterfunc func(item interface{}) bool) {
+func (stream *ClassifyEx) SeekGEReverse(item interface{}, iterfunc func(iter *Iterator) bool) {
 	skey := stream.getEncodeKey(item)
-	iter := stream.bytesdict.Iterator()
-	iter.SeekLE(skey)
-
-	for iter.Valid() {
-		if !iterfunc(iter.Value()) {
+	siter := stream.bytesdict.Iterator()
+	siter.SeekLE(skey)
+	iter := &Iterator{mark: siter.Value()}
+	for siter.Valid() {
+		iter.cur = siter.Value()
+		if !iterfunc(iter) {
 			break
 		}
-		iter.Prev()
+		siter.Prev()
 	}
 }
 
 // RangeItems 从小到大遍历 item 对象
-func (stream *ClassifyEx) RangeItems(do func(item interface{}) bool) {
-	stream.bytesdict.Traverse(func(s *treelist.Slice) bool {
-		return do(s.Value)
-	})
+func (stream *ClassifyEx) RangeItems(iterfunc func(iter *Iterator) bool) {
+	siter := stream.bytesdict.Iterator()
+	siter.SeekToFirst()
+	iter := &Iterator{mark: siter.Value()}
+	for siter.Valid() {
+		iter.cur = siter.Value()
+		if !iterfunc(iter) {
+			break
+		}
+		siter.Next()
+	}
 }
 
 func (stream *ClassifyEx) Build(mode string, handlers ...CategoryHandler) {
@@ -144,6 +155,7 @@ func (stream *ClassifyEx) Build(mode string, handlers ...CategoryHandler) {
 
 		switch mt {
 		case MT_FIELD:
+
 			// 添加处理字段的类别方法
 			stream.AddCategory(func(value interface{}) interface{} {
 				v := reflect.ValueOf(value)

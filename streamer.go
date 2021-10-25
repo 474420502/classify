@@ -79,10 +79,7 @@ func (stream *Streamer) AddCategory(handler CategoryHandler) *Streamer {
 
 // Add 添加到处理队列处理. 汇聚成counted. 通过 Seek RangeCounted获取结果
 func (stream *Streamer) Add(item interface{}) {
-	var skey []byte
-	for _, handler := range stream.categorys {
-		skey = append(skey, handlerbytes(handler(item))...)
-	}
+	skey := stream.getEncodeKey(item)
 
 	// var skey = bkey
 	var counted interface{}

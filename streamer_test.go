@@ -132,6 +132,8 @@ func TestSortRangeMethod(t *testing.T) {
 		return item.(*TSTime).CreateAt.Truncate(time.Hour)
 	})
 
+	defer streamer.Clear()
+
 	// 创建 生成统计的类型.
 	streamer.SetCreateCountedHandler(func(passitem interface{}) interface{} {
 		item := passitem.(*TSTime)

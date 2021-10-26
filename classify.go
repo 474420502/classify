@@ -357,3 +357,7 @@ func autoComapre(k1, k2 interface{}) int {
 	}
 
 }
+
+func (clsfy *Classify) Clear() {
+	clsfy.Values.Clear()
+}

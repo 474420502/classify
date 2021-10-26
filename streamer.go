@@ -221,3 +221,7 @@ func (stream *Streamer) Build(mode string, handlers ...CategoryHandler) {
 
 	}
 }
+
+func (stream *Streamer) Clear() {
+	stream.bytesdict.Clear()
+}

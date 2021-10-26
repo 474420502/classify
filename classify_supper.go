@@ -1,179 +1,172 @@
 package classify
 
-import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"log"
-	"reflect"
-	"strconv"
+// type ClassifyEx struct {
+// 	categorys   []CategoryHandler
+// 	bytesdict   *treelist.Tree
+// 	uniqueCount uint64
+// }
 
-	"github.com/474420502/structure/search/treelist"
-)
+// // NewClassifyEx CreateCountedHandler CountHandler Add 都必须要使用地址传入
+// func NewClassifyEx(mode string, handlers ...CategoryHandler) *ClassifyEx {
+// 	s := &ClassifyEx{bytesdict: treelist.New()}
+// 	s.Build(mode, handlers...)
+// 	return s
+// }
 
-type ClassifyEx struct {
-	categorys      []CategoryHandler
-	categoryfields []string // 类型名字列表
-	bytesdict      *treelist.Tree
-	uniqueCount    uint64
-}
+// // AddCategory 添加类别的处理方法
+// func (stream *ClassifyEx) AddCategory(handler CategoryHandler) *ClassifyEx {
+// 	stream.categorys = append(stream.categorys, handler)
+// 	return stream
+// }
 
-// NewClassifyEx CreateCountedHandler CountHandler Add 都必须要使用地址传入
-func NewClassifyEx(mode string, handlers ...CategoryHandler) *ClassifyEx {
-	s := &ClassifyEx{bytesdict: treelist.New()}
-	s.Build(mode, handlers...)
-	return s
-}
+// // Put 添加到处理队列处理.  通过 Seek RangeItem获取结果
+// func (stream *ClassifyEx) Put(item interface{}) {
+// 	var skey = stream.getEncodeKey(item)
 
-// AddCategory 添加类别的处理方法
-func (stream *ClassifyEx) AddCategory(handler CategoryHandler) *ClassifyEx {
-	stream.categorys = append(stream.categorys, handler)
-	return stream
-}
+// 	if !stream.bytesdict.Put(skey, item) {
+// 		log.Println("Warnning key is Conflict")
+// 	}
+// }
 
-// Put 添加到处理队列处理.  通过 Seek RangeItem获取结果
-func (stream *ClassifyEx) Put(item interface{}) {
-	var skey = stream.getEncodeKey(item)
+// // getEncodeKey 序列化 item的所有key
+// func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
+// 	// var skey []byte
+// 	var skey = bytes.NewBuffer(nil)
 
-	if !stream.bytesdict.Put(skey, item) {
-		log.Println("Warnning key is Conflict")
-	}
-}
+// 	for _, handler := range stream.categorys {
+// 		skey.Write(handlerbytes(handler(item)))
+// 	}
+// 	err := binary.Write(skey, binary.BigEndian, stream.uniqueCount)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	stream.uniqueCount++
+// 	return skey.Bytes()
+// }
 
-// getEncodeKey 序列化 item的所有key
-func (stream *ClassifyEx) getEncodeKey(item interface{}) []byte {
-	// var skey []byte
-	var skey = bytes.NewBuffer(nil)
+// // SeekGE 定位到 item字段 字节序列后的点(类似前缀搜索). 然后从小到大遍历
+// // [1 2 3] 参数为2 则 第一个item为2
+// // [1 3] 参数为2 则 第一个item为3
+// func (stream *ClassifyEx) SeekGE(key interface{}, iterfunc func(iter *Iterator) bool) {
+// 	skey := stream.getEncodeKey(key)
+// 	siter := stream.bytesdict.Iterator()
+// 	siter.SeekGE(skey)
+// 	iter := &Iterator{mark: siter.Value()}
+// 	for siter.Valid() {
+// 		iter.cur = siter.Value()
+// 		if !iterfunc(iter) {
+// 			break
+// 		}
+// 		siter.Next()
+// 	}
+// }
 
-	for _, handler := range stream.categorys {
-		skey.Write(handlerbytes(handler(item)))
-	}
-	err := binary.Write(skey, binary.BigEndian, stream.uniqueCount)
-	if err != nil {
-		panic(err)
-	}
-	stream.uniqueCount++
-	return skey.Bytes()
-}
+// // SeekGEReverse 定位到 item 字节序列后的点(类似前缀搜索). 然后从大到小遍历
+// // [1 2 3] 参数为2 则 第一个item为2
+// // [1 3] 参数为2 则 第一个item为1.
+// func (stream *ClassifyEx) SeekGEReverse(item interface{}, iterfunc func(iter *Iterator) bool) {
+// 	skey := stream.getEncodeKey(item)
+// 	siter := stream.bytesdict.Iterator()
+// 	siter.SeekLE(skey)
+// 	iter := &Iterator{mark: siter.Value()}
+// 	for siter.Valid() {
+// 		iter.cur = siter.Value()
+// 		if !iterfunc(iter) {
+// 			break
+// 		}
+// 		siter.Prev()
+// 	}
+// }
 
-// SeekGE 定位到 item字段 字节序列后的点(类似前缀搜索). 然后从小到大遍历
-// [1 2 3] 参数为2 则 第一个item为2
-// [1 3] 参数为2 则 第一个item为3
-func (stream *ClassifyEx) SeekGE(key interface{}, iterfunc func(iter *Iterator) bool) {
-	skey := stream.getEncodeKey(key)
-	siter := stream.bytesdict.Iterator()
-	siter.SeekGE(skey)
-	iter := &Iterator{mark: siter.Value()}
-	for siter.Valid() {
-		iter.cur = siter.Value()
-		if !iterfunc(iter) {
-			break
-		}
-		siter.Next()
-	}
-}
+// // RangeItems 从小到大遍历 item 对象
+// func (stream *ClassifyEx) RangeItems(iterfunc func(iter *Iterator) bool) {
+// 	siter := stream.bytesdict.Iterator()
+// 	siter.SeekToFirst()
+// 	iter := &Iterator{mark: siter.Value()}
+// 	for siter.Valid() {
+// 		iter.cur = siter.Value()
+// 		if !iterfunc(iter) {
+// 			break
+// 		}
+// 		siter.Next()
+// 	}
+// }
 
-// SeekGEReverse 定位到 item 字节序列后的点(类似前缀搜索). 然后从大到小遍历
-// [1 2 3] 参数为2 则 第一个item为2
-// [1 3] 参数为2 则 第一个item为1.
-func (stream *ClassifyEx) SeekGEReverse(item interface{}, iterfunc func(iter *Iterator) bool) {
-	skey := stream.getEncodeKey(item)
-	siter := stream.bytesdict.Iterator()
-	siter.SeekLE(skey)
-	iter := &Iterator{mark: siter.Value()}
-	for siter.Valid() {
-		iter.cur = siter.Value()
-		if !iterfunc(iter) {
-			break
-		}
-		siter.Prev()
-	}
-}
+// func (stream *ClassifyEx) Build(mode string, handlers ...CategoryHandler) {
 
-// RangeItems 从小到大遍历 item 对象
-func (stream *ClassifyEx) RangeItems(iterfunc func(iter *Iterator) bool) {
-	siter := stream.bytesdict.Iterator()
-	siter.SeekToFirst()
-	iter := &Iterator{mark: siter.Value()}
-	for siter.Valid() {
-		iter.cur = siter.Value()
-		if !iterfunc(iter) {
-			break
-		}
-		siter.Next()
-	}
-}
+// 	for _, token := range bytes.Split([]byte(mode), []byte{'.'}) {
+// 		var i = 0
 
-func (stream *ClassifyEx) Build(mode string, handlers ...CategoryHandler) {
+// 		// var cname []byte
+// 		var cmethod []byte
+// 		var mt MethodType = 0 // 1 是字段( 2 是方法< 3 结尾收集@ 4 是拼接 +
 
-	for _, token := range bytes.Split([]byte(mode), []byte{'.'}) {
-		var i = 0
+// 	CNAME:
+// 		for ; i < len(token); i++ {
+// 			c := token[i]
+// 			switch c {
+// 			case '@':
+// 				panic("@ 不存在该操作符")
+// 			case '+':
+// 				break CNAME
+// 			case '[':
+// 				mt = MT_METHOD
+// 				i++
+// 				break CNAME
+// 			case '<':
+// 				mt = MT_FIELD
+// 				i++
+// 				break CNAME
+// 			case ' ':
+// 				continue
+// 			default:
+// 				// cname = append(cname, c)
+// 			}
+// 		}
 
-		// var cname []byte
-		var cmethod []byte
-		var mt MethodType = 0 // 1 是字段( 2 是方法< 3 结尾收集@ 4 是拼接 +
+// 		if mt == MT_UNKNOWN {
+// 			panic(fmt.Errorf("语法错误: %s", mode))
+// 		}
 
-	CNAME:
-		for ; i < len(token); i++ {
-			c := token[i]
-			switch c {
-			case '@':
-				panic("@ 不存在该操作符")
-			case '+':
-				break CNAME
-			case '[':
-				mt = MT_METHOD
-				i++
-				break CNAME
-			case '<':
-				mt = MT_FIELD
-				i++
-				break CNAME
-			case ' ':
-				continue
-			default:
-				// cname = append(cname, c)
-			}
-		}
+// 	CMETHOD:
+// 		for ; i < len(token); i++ {
+// 			c := token[i]
+// 			switch c {
+// 			case ' ':
+// 				continue
+// 			case ']', '>':
+// 				break CMETHOD
+// 			default:
+// 				cmethod = append(cmethod, c)
+// 			}
+// 		}
 
-		if mt == MT_UNKNOWN {
-			panic(fmt.Errorf("语法错误: %s", mode))
-		}
+// 		switch mt {
+// 		case MT_FIELD:
 
-	CMETHOD:
-		for ; i < len(token); i++ {
-			c := token[i]
-			switch c {
-			case ' ':
-				continue
-			case ']', '>':
-				break CMETHOD
-			default:
-				cmethod = append(cmethod, c)
-			}
-		}
+// 			// 添加处理字段的类别方法
+// 			stream.AddCategory(func(value interface{}) interface{} {
+// 				v := reflect.ValueOf(value)
+// 				if v.Type().Kind() == reflect.Ptr {
+// 					v = v.Elem()
+// 				}
+// 				return v.FieldByName(string(cmethod)).Interface()
+// 			})
+// 		case MT_METHOD:
+// 			// 通过自定义函数处理字段返回的方法
+// 			fidx, err := strconv.Atoi(string(cmethod))
+// 			if err != nil {
+// 				panic(err)
+// 			}
+// 			stream.AddCategory(handlers[fidx])
+// 		default:
+// 			panic(fmt.Errorf("MethodType %d is error", mt))
+// 		}
 
-		switch mt {
-		case MT_FIELD:
+// 	}
+// }
 
-			// 添加处理字段的类别方法
-			stream.AddCategory(func(value interface{}) interface{} {
-				v := reflect.ValueOf(value)
-				if v.Type().Kind() == reflect.Ptr {
-					v = v.Elem()
-				}
-				return v.FieldByName(string(cmethod)).Interface()
-			})
-		case MT_METHOD:
-			// 通过自定义函数处理字段返回的方法
-			fidx, err := strconv.Atoi(string(cmethod))
-			if err != nil {
-				panic(err)
-			}
-			stream.AddCategory(handlers[fidx])
-		default:
-			panic(fmt.Errorf("MethodType %d is error", mt))
-		}
-
-	}
-}
+// func (stream *ClassifyEx) Clear() {
+// 	stream.bytesdict.Clear()
+// 	stream.uniqueCount = 0
+// }

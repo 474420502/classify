@@ -156,6 +156,7 @@ func TestSortRangeMethod(t *testing.T) {
 	random.Use(random.DataIdidomChina)
 
 	now := time.Unix(1634895792, 0)
+	var items []*TSTime
 	for i := 0; i < 240; i++ {
 		item := &TSTime{
 			CreateAt: now,
@@ -164,9 +165,12 @@ func TestSortRangeMethod(t *testing.T) {
 			Value:    rand.Int31(),
 			Type:     rand.Int31n(100),
 		}
-		streamer.Add(item)
+		items = append(items, item)
+
 		now = now.Add(time.Minute * 15)
 	}
+
+	streamer.AddSlice(items)
 
 	now = time.Unix(1634895792, 0).Add(time.Hour * 5).Truncate(time.Hour)
 	streamer.SeekGE(&TSTime{CreateAt: now}, func(item interface{}) bool {

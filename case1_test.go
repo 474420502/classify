@@ -9,6 +9,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/474420502/random"
 )
 
 func init() {
@@ -376,7 +378,10 @@ func Test3(t *testing.T) {
 	for _, region := range clsfy.Keys() {
 		for _, country := range clsfy.Keys(region) {
 			var gitems []*GiftItem
-			clsfy.Get(&gitems, region, country)
+			err := clsfy.Get(&gitems, region, country)
+			if err != nil {
+				t.Error(err)
+			}
 			// log.Println(region, country)
 			for _, item := range gitems {
 				// log.Printf("%#v", item)
@@ -390,7 +395,8 @@ func Test3(t *testing.T) {
 			}
 		}
 	}
-
+	clsfy.Clear()
+	clsfy.values.Size()
 }
 
 // 测试@
@@ -400,5 +406,42 @@ func Test4(t *testing.T) {
 	clsfy.PutSlice(items)
 	if len(clsfy.Keys()) == 0 {
 		t.Error("")
+	}
+	var result []*GiftItem
+	err := clsfy.Get(&result, "")
+	if err != ErrGetKeyNotExists {
+		t.Error("get key is not exists. but not error")
+	}
+}
+
+type DTest5 struct {
+	V1 int32
+	V2 float32
+	V3 time.Time
+}
+
+func Test5(t *testing.T) {
+	r := random.New()
+	clsfy := NewWithMode(`region<V1>.country<V3>.@V2`)
+	for i := 0; i < 100; i++ {
+		item := &DTest5{
+			V1: r.Int31n(10),
+			V2: r.Float32(),
+			V3: r.Extend().DateRange("2021-11-01", "2021-11-05").Truncate(24 * time.Hour),
+		}
+		clsfy.Put(item)
+	}
+
+	for _, k1 := range clsfy.Keys() {
+		for _, k2 := range clsfy.Keys(k1) {
+			if _, ok := k2.(time.Time); !ok {
+				panic("should be the type of time")
+			}
+			var ts []*DTest5
+			err := clsfy.Get(&ts, k1, k2)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 }

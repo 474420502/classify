@@ -101,6 +101,17 @@ func (stream *Streamer) Add(item interface{}) {
 	}
 }
 
+// AddSlice items添加到处理队列处理. 汇聚成counted. 通过 Seek RangeCounted获取结果
+func (stream *Streamer) AddSlice(items interface{}) {
+	vitems := reflect.ValueOf(items)
+	if vitems.Type().Kind() != reflect.Slice {
+		panic(" input must slice ")
+	}
+	for i := 0; i < vitems.Len(); i++ {
+		stream.Add(vitems.Index(i).Interface())
+	}
+}
+
 // getEncodeKey 序列化 item的所有key
 func (stream *Streamer) getEncodeKey(item interface{}) []byte {
 	var skey []byte

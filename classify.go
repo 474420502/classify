@@ -22,7 +22,7 @@ var defaultCategoryHandler CategoryHandler = func(value interface{}) interface{}
 // 分类
 type Classify struct {
 	categorys []*hCategory
-	Values    *treequeue.Queue
+	values    *treequeue.Queue
 }
 
 // CategoryHandler 处理结构体字段的返回值
@@ -35,16 +35,19 @@ type hCategory struct {
 	IsCollect bool
 }
 
+// New 创建一个分类器
 func New() *Classify {
 	return &Classify{}
 }
 
+// NewWithMode 先New 后 Build的一体处理过程
 func NewWithMode(mode string, handlers ...CategoryHandler) *Classify {
 	c := New()
 	c.Build(mode, handlers...)
 	return c
 }
 
+// Build 根据简单的表达式分类. 对结构体的处理
 func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 
 	for _, token := range bytes.Split([]byte(mode), []byte{'.'}) {
@@ -96,7 +99,7 @@ func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 
 		switch methodType {
 		case 1:
-			log.Println(string(cname), string(cmethod))
+			// log.Println(string(cname), string(cmethod))
 			clsfy.AddCategory(string(cname), func(value interface{}) interface{} {
 				v := reflect.ValueOf(value)
 				if v.Type().Kind() == reflect.Ptr {
@@ -131,6 +134,7 @@ func (clsfy *Classify) Build(mode string, handlers ...CategoryHandler) {
 	}
 }
 
+// AddCategory 添加对每个分类的处理过程
 func (clsfy *Classify) AddCategory(name string, handler CategoryHandler) *Classify {
 	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      name,
@@ -140,6 +144,7 @@ func (clsfy *Classify) AddCategory(name string, handler CategoryHandler) *Classi
 	return clsfy
 }
 
+// Categorys 分类后的类集合
 func (clsfy *Classify) Categorys() string {
 	if len(clsfy.categorys) == 0 {
 		return ""
@@ -158,6 +163,7 @@ func (clsfy *Classify) Categorys() string {
 	return string(content)
 }
 
+// Collect 默认的CollectCategory处理.
 func (clsfy *Classify) Collect() {
 	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      "@",
@@ -166,6 +172,7 @@ func (clsfy *Classify) Collect() {
 	})
 }
 
+// CollectCategory 收集数据的方法设置. 就是到最后item被添加到树过程处理
 func (clsfy *Classify) CollectCategory(handler CategoryHandler) {
 	clsfy.categorys = append(clsfy.categorys, &hCategory{
 		Name:      "@",
@@ -174,8 +181,9 @@ func (clsfy *Classify) CollectCategory(handler CategoryHandler) {
 	})
 }
 
-func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
-	var values *treequeue.Queue = clsfy.Values
+// Keys 获取所有分类的Key. 默认就返回第一分类keys
+func (clsfy *Classify) Keys(paths ...interface{}) (keys []interface{}) {
+	var values *treequeue.Queue = clsfy.values
 	// var category *Category
 	if len(paths) >= len(clsfy.categorys)-1 {
 		panic(fmt.Sprintf("categorys len is %d only: %#v", len(clsfy.categorys)-1, clsfy.Categorys()))
@@ -185,36 +193,37 @@ func (clsfy *Classify) Keys(paths ...interface{}) (result []interface{}) {
 		if child := values.Get(p); child != nil {
 			values = child.Value().(*treequeue.Queue)
 		} else {
-			panic(fmt.Errorf("no key %v", p))
+			log.Panic(ErrGetKeyNotExists, fmt.Errorf("no key %v", p))
 		}
 	}
 
 	values.Traverse(func(s *treequeue.Slice) bool {
-		result = append(result, s.Key())
+		keys = append(keys, s.Key())
 		return true
 	})
 
 	return
 }
 
+// Put 把需要分类的数据加进分类器.
 func (clsfy *Classify) Put(v interface{}) {
-	if clsfy.Values == nil {
-		clsfy.Values = treequeue.New(autoComapre)
+	if clsfy.values == nil {
+		clsfy.values = treequeue.New(autoComapre)
 	}
-	put(clsfy.categorys, 0, clsfy.Values, v)
+	put(clsfy.categorys, 0, clsfy.values, v)
 }
 
 func (clsfy *Classify) PutSlice(items interface{}) {
 
-	if clsfy.Values == nil {
-		clsfy.Values = treequeue.New(autoComapre)
+	if clsfy.values == nil {
+		clsfy.values = treequeue.New(autoComapre)
 	}
 	vitems := reflect.ValueOf(items)
 	if vitems.Type().Kind() != reflect.Slice {
 		panic(" input must slice ")
 	}
 	for i := 0; i < vitems.Len(); i++ {
-		put(clsfy.categorys, 0, clsfy.Values, vitems.Index(i).Interface())
+		put(clsfy.categorys, 0, clsfy.values, vitems.Index(i).Interface())
 	}
 
 }
@@ -238,9 +247,10 @@ func put(categorys []*hCategory, cidx int, Values *treequeue.Queue, v interface{
 	}
 }
 
-func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
+// Get 获取 vpaths(keys) 的值. 如果存在就返回nil. 否则返回 ErrGetKeyNotExists
+func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) error {
 
-	var values *treequeue.Queue = clsfy.Values
+	var values *treequeue.Queue = clsfy.values
 	if len(vPaths) >= len(clsfy.categorys) {
 		panic(fmt.Sprintf("values keys deepth is %d only: %#v", len(clsfy.categorys), clsfy.Categorys()))
 	}
@@ -260,6 +270,8 @@ func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 
 		if child := values.Get(vp); child != nil {
 			values = child.Value().(*treequeue.Queue)
+		} else {
+			return ErrGetKeyNotExists
 		}
 	}
 
@@ -280,6 +292,7 @@ func (clsfy *Classify) Get(out interface{}, vPaths ...interface{}) {
 	}
 	getValues(cidx, values)
 	outv.Elem().Set(result)
+	return nil
 }
 
 func autoComapre(k1, k2 interface{}) int {
@@ -359,5 +372,5 @@ func autoComapre(k1, k2 interface{}) int {
 }
 
 func (clsfy *Classify) Clear() {
-	clsfy.Values.Clear()
+	clsfy.values.Clear()
 }

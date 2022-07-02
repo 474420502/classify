@@ -17,9 +17,9 @@ type TestStruct struct {
 
 func TestMode(t *testing.T) {
 
-	streamer := NewStreamer("<Name>.<Type>")
-	streamer.SetCreateCountedHandler(func(passitem interface{}) interface{} {
-		item := passitem.(*TestStruct)
+	streamer := NewStreamer[*TestStruct]("<Name>.<Type>")
+	streamer.SetCreateCountedHandler(func(passitem *TestStruct) *TestStruct {
+		item := passitem
 		return &TestStruct{
 			Name:  item.Name,
 			Label: item.Label,
@@ -27,9 +27,9 @@ func TestMode(t *testing.T) {
 			Type:  item.Type,
 		}
 	})
-	streamer.SetCountHandler(func(counted, item interface{}) {
-		c := counted.(*TestStruct)
-		c.Value += item.(*TestStruct).Value
+	streamer.SetCountHandler(func(counted, item *TestStruct) {
+		c := counted
+		c.Value += item.Value
 	})
 
 	end := int32(10)
@@ -61,11 +61,11 @@ func TestMode(t *testing.T) {
 func TestSortRange(t *testing.T) {
 
 	rand := random.New()
-	streamer := NewStreamer("<Type>.<Name>.<Label>")
+	streamer := NewStreamer[*TestStruct]("<Type>.<Name>.<Label>")
 
 	// 创建 生成统计的类型.
-	streamer.SetCreateCountedHandler(func(passitem interface{}) interface{} {
-		item := passitem.(*TestStruct)
+	streamer.SetCreateCountedHandler(func(passitem *TestStruct) *TestStruct {
+		item := passitem
 		return &TestStruct{
 			Name:  item.Name,
 			Label: item.Label,
@@ -75,9 +75,9 @@ func TestSortRange(t *testing.T) {
 	})
 
 	//  统计的每一个Add item. 累加之类的. 作为流计算
-	streamer.SetCountHandler(func(counted, item interface{}) {
-		c := counted.(*TestStruct)
-		c.Value += item.(*TestStruct).Value
+	streamer.SetCountHandler(func(counted, item *TestStruct) {
+		c := counted
+		c.Value += item.Value
 	})
 
 	random.Use(random.DataNameChina)
@@ -97,7 +97,7 @@ func TestSortRange(t *testing.T) {
 	// 	/home/eson/workspace/classfiy/streamer_test.go:97: &{黄镇旨 蛮烟瘴雨 33 1350982193}
 	// /home/eson/workspace/classfiy/streamer_test.go:97: &{齐因泽 街头巷口 44 466969591}
 
-	streamer.Seek(TestStruct{Type: 70}, func(item interface{}) bool {
+	streamer.Seek(&TestStruct{Type: 70}, func(item interface{}) bool {
 		i := item.(*TestStruct)
 		if i.Type < 70 {
 			t.Error("Seek error")
@@ -106,7 +106,7 @@ func TestSortRange(t *testing.T) {
 		return true
 	})
 
-	streamer.SeekReverse(TestStruct{Type: 70}, func(item interface{}) bool {
+	streamer.SeekReverse(&TestStruct{Type: 70}, func(item interface{}) bool {
 		i := item.(*TestStruct)
 		if i.Type > 70 {
 			t.Error("Seek error")

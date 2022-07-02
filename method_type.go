@@ -17,5 +17,8 @@ const (
 	MT_COLLECT MethodType = 3 // 3 收集操作 @
 )
 
-type CountHandler func(counted interface{}, item interface{})
-type CreateCountedHandler func(item interface{}) interface{}
+type CountHandler[T any] func(counted T, item T)
+type CreateCountedHandler[T any] func(item T) T
+
+// CategoryHandler 处理结构体字段的返回值
+type CategoryHandler[T any] func(item T) any

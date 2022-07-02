@@ -1,16 +1,11 @@
 package classify
 
-import (
-	"reflect"
-	"time"
-)
-
 // kingTime 时间
-var kingTime = reflect.TypeOf(time.Time{}).Kind()
+// var kingTime = reflect.TypeOf(time.Time{}).Kind()
 
-var defaultCategoryHandler CategoryHandler[any] = func(value any) any {
-	return 0
-}
+// var defaultCategoryHandler CategoryHandler[any] = func(value any) any {
+// 	return 0
+// }
 
 // 分类
 // type Classify[T any] struct {

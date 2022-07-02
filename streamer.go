@@ -147,9 +147,9 @@ func (stream *Streamer[T]) SeekReverse(item T, iterfunc func(counted interface{}
 }
 
 // RangeCounted 从小到大遍历 counted 对象
-func (stream *Streamer[T]) RangeCounted(do func(counted interface{}) bool) {
+func (stream *Streamer[T]) RangeCounted(do func(counted T) bool) {
 	stream.bytesdict.Traverse(func(s *treelist.Slice) bool {
-		return do(s.Value)
+		return do(s.Value.(T))
 	})
 }
 
